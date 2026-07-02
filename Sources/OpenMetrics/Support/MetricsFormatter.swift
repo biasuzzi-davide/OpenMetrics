@@ -84,6 +84,35 @@ struct MetricsFormatter {
         return parts.isEmpty ? "OpenMetrics" : parts.joined(separator: "  ")
     }
 
+    static func compactMenuBarText(
+        snapshot: SystemSnapshot,
+        showCPU: Bool,
+        showRAM: Bool,
+        showDisk: Bool,
+        showBattery: Bool,
+        showNetwork: Bool
+    ) -> String {
+        var parts: [String] = []
+
+        if showCPU {
+            parts.append("C\(percentNumber(snapshot.cpuUsage))")
+        }
+        if showRAM {
+            parts.append("R\(percentNumber(snapshot.memoryUsage))")
+        }
+        if showDisk {
+            parts.append("D\(percentNumber(snapshot.diskUsage))")
+        }
+        if showBattery, let batteryPercent = snapshot.batteryPercent {
+            parts.append("B\(percentNumber(batteryPercent))")
+        }
+        if showNetwork {
+            parts.append("N\(compactBytes(snapshot.networkInPerSecond))/\(compactBytes(snapshot.networkOutPerSecond))")
+        }
+
+        return parts.isEmpty ? "OpenMetrics" : parts.joined(separator: " ")
+    }
+
     static func aiMenuBarText(
         snapshot: AIUsageSnapshot,
         showClaude: Bool,
@@ -106,5 +135,16 @@ struct MetricsFormatter {
         }
 
         return parts.joined(separator: "  ")
+    }
+
+    private static func percentNumber(_ value: Double) -> String {
+        String(Int((min(max(value, 0), 1) * 100).rounded()))
+    }
+
+    private static func compactBytes(_ value: UInt64) -> String {
+        if value >= 1_000_000_000 { return "\(value / 1_000_000_000)G" }
+        if value >= 1_000_000 { return "\(value / 1_000_000)M" }
+        if value >= 1_000 { return "\(value / 1_000)K" }
+        return "\(value)B"
     }
 }

@@ -3,41 +3,30 @@ import ServiceManagement
 
 struct SettingsTab: View {
     var store: MetricsStore
-
-    @AppStorage(SettingsKey.refreshInterval) private var refreshInterval = 1
-    @AppStorage(SettingsKey.showCPUInMenuBar) private var showCPU = true
-    @AppStorage(SettingsKey.showRAMInMenuBar) private var showRAM = true
-    @AppStorage(SettingsKey.showDiskInMenuBar) private var showDisk = false
-    @AppStorage(SettingsKey.showBatteryInMenuBar) private var showBattery = true
-    @AppStorage(SettingsKey.showNetworkInMenuBar) private var showNetwork = false
-    @AppStorage(SettingsKey.showClaudeInMenuBar) private var showClaude = false
-    @AppStorage(SettingsKey.showCodexInMenuBar) private var showCodex = false
-    @AppStorage(SettingsKey.aiUsageDisplayMode) private var aiUsageDisplayMode = AIUsageDisplayMode.used.rawValue
-    @AppStorage(SettingsKey.aiResetDisplayMode) private var aiResetDisplayMode = AIResetDisplayMode.relative.rawValue
-    @AppStorage(SettingsKey.launchAtLogin) private var launchAtLogin = false
+    @ObservedObject var settings: AppSettings
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 DetailSection(title: "Barra menu") {
-                    Toggle("CPU", isOn: $showCPU)
-                    Toggle("RAM", isOn: $showRAM)
-                    Toggle("Disco", isOn: $showDisk)
-                    Toggle("Batteria", isOn: $showBattery)
-                    Toggle("Rete", isOn: $showNetwork)
-                    Toggle("Claude", isOn: $showClaude)
-                    Toggle("Codex", isOn: $showCodex)
+                    Toggle("CPU", isOn: $settings.showCPUInMenuBar)
+                    Toggle("RAM", isOn: $settings.showRAMInMenuBar)
+                    Toggle("Disco", isOn: $settings.showDiskInMenuBar)
+                    Toggle("Batteria", isOn: $settings.showBatteryInMenuBar)
+                    Toggle("Rete", isOn: $settings.showNetworkInMenuBar)
+                    Toggle("Claude", isOn: $settings.showClaudeInMenuBar)
+                    Toggle("Codex", isOn: $settings.showCodexInMenuBar)
                 }
 
                 DetailSection(title: "AI") {
-                    Picker("Usage", selection: $aiUsageDisplayMode) {
+                    Picker("Usage", selection: $settings.aiUsageDisplayMode) {
                         ForEach(AIUsageDisplayMode.allCases) { mode in
                             Text(mode.title).tag(mode.rawValue)
                         }
                     }
                     .pickerStyle(.segmented)
 
-                    Picker("Reset", selection: $aiResetDisplayMode) {
+                    Picker("Reset", selection: $settings.aiResetDisplayMode) {
                         ForEach(AIResetDisplayMode.allCases) { mode in
                             Text(mode.title).tag(mode.rawValue)
                         }
@@ -46,7 +35,7 @@ struct SettingsTab: View {
                 }
 
                 DetailSection(title: "Aggiornamento") {
-                    Picker("Intervallo", selection: $refreshInterval) {
+                    Picker("Intervallo", selection: $settings.refreshInterval) {
                         Text("1s").tag(1)
                         Text("2s").tag(2)
                         Text("5s").tag(5)
@@ -60,18 +49,18 @@ struct SettingsTab: View {
                 }
 
                 DetailSection(title: "Avvio") {
-                    Toggle("Avvio automatico", isOn: $launchAtLogin)
+                    Toggle("Avvio automatico", isOn: $settings.launchAtLogin)
                 }
             }
             .padding(.trailing, 6)
         }
-        .onChange(of: refreshInterval) { value in
+        .onChange(of: settings.refreshInterval) { value in
             store.setRefreshInterval(value)
         }
         .onAppear {
-            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            settings.launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
-        .onChange(of: launchAtLogin) { newValue in
+        .onChange(of: settings.launchAtLogin) { newValue in
             Task {
                 do {
                     if newValue {
@@ -80,7 +69,7 @@ struct SettingsTab: View {
                         try SMAppService.mainApp.unregister()
                     }
                 } catch {
-                    launchAtLogin = false
+                    settings.launchAtLogin = false
                 }
             }
         }

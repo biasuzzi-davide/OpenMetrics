@@ -81,6 +81,69 @@ struct MiniMetric: View {
     }
 }
 
+struct AIProviderIcon: View {
+    var provider: AIProviderID
+    var size: CGFloat
+
+    var body: some View {
+        Group {
+            if let image = AIProviderAppIcons.icon(for: provider) {
+                Image(nsImage: image)
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .foregroundStyle(.primary)
+            } else {
+                Image(systemName: provider.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel(provider.rawValue)
+    }
+}
+
+private enum AIProviderAppIcons {
+    static let claude = load(bundleID: "com.anthropic.claudefordesktop", fallback: "/Applications/Claude.app")
+    static let codex = load(bundleID: "com.openai.codex", fallback: "/Applications/Codex.app")
+
+    static func icon(for provider: AIProviderID) -> NSImage? {
+        switch provider {
+        case .claude:
+            return claude
+        case .codex:
+            return codex
+        }
+    }
+
+    private static func load(bundleID: String, fallback: String) -> NSImage? {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            if let image = resourceNames(for: bundleID).compactMap({ loadResource($0, in: url) }).first {
+                return image
+            }
+        }
+
+        let url = URL(fileURLWithPath: fallback)
+        return resourceNames(for: bundleID).compactMap { loadResource($0, in: url) }.first
+    }
+
+    private static func resourceNames(for bundleID: String) -> [String] {
+        bundleID == "com.openai.codex" ? ["codexTemplate@2x", "codexTemplate"] : ["TrayIconTemplate@2x", "TrayIconTemplate"]
+    }
+
+    private static func loadResource(_ name: String, in appURL: URL) -> NSImage? {
+        let url = appURL
+            .appendingPathComponent("Contents")
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("\(name).png")
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        image.isTemplate = true
+        return image
+    }
+}
+
 struct DetailSection<Content: View>: View {
     var title: String
     var content: Content

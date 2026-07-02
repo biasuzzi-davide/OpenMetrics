@@ -2,15 +2,14 @@ import SwiftUI
 
 struct AITab: View {
     @ObservedObject var store: AIUsageStore
-    @AppStorage(SettingsKey.aiUsageDisplayMode) private var usageModeRaw = AIUsageDisplayMode.used.rawValue
-    @AppStorage(SettingsKey.aiResetDisplayMode) private var resetModeRaw = AIResetDisplayMode.relative.rawValue
+    @ObservedObject var settings: AppSettings
 
     private var usageMode: AIUsageDisplayMode {
-        AIUsageDisplayMode(rawValue: usageModeRaw) ?? .used
+        AIUsageDisplayMode(rawValue: settings.aiUsageDisplayMode) ?? .used
     }
 
     private var resetMode: AIResetDisplayMode {
-        AIResetDisplayMode(rawValue: resetModeRaw) ?? .relative
+        AIResetDisplayMode(rawValue: settings.aiResetDisplayMode) ?? .relative
     }
 
     var body: some View {
@@ -61,9 +60,7 @@ private struct AIProviderPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: provider.id.icon)
-                    .frame(width: 18)
-                    .foregroundStyle(.secondary)
+                AIProviderIcon(provider: provider.id, size: 18)
 
                 Text(provider.id.rawValue)
                     .font(.headline)

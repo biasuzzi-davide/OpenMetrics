@@ -12,8 +12,8 @@ enum PanelTab: String, CaseIterable, Identifiable {
 struct MetricsPanel: View {
     @ObservedObject var store: MetricsStore
     @ObservedObject var aiStore: AIUsageStore
+    @ObservedObject var settings: AppSettings
     @State private var tab = PanelTab.overview
-    @AppStorage(SettingsKey.refreshInterval) private var refreshInterval = 1
 
     var body: some View {
         let snapshot = store.snapshot
@@ -36,9 +36,9 @@ struct MetricsPanel: View {
                 case .details:
                     DetailsTab(snapshot: snapshot)
                 case .ai:
-                    AITab(store: aiStore)
+                    AITab(store: aiStore, settings: settings)
                 case .settings:
-                    SettingsTab(store: store)
+                    SettingsTab(store: store, settings: settings)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -46,9 +46,9 @@ struct MetricsPanel: View {
             Footer(store: store, snapshot: snapshot)
         }
         .onAppear {
-            store.setRefreshInterval(refreshInterval)
+            store.setRefreshInterval(settings.refreshInterval)
         }
-        .onChange(of: refreshInterval) { value in
+        .onChange(of: settings.refreshInterval) { value in
             store.setRefreshInterval(value)
         }
     }

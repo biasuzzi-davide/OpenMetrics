@@ -3,22 +3,14 @@ import SwiftUI
 struct MenuBarLabel: View {
     var snapshot: SystemSnapshot
     var aiSnapshot: AIUsageSnapshot
-
-    @AppStorage(SettingsKey.showCPUInMenuBar) private var showCPU = true
-    @AppStorage(SettingsKey.showRAMInMenuBar) private var showRAM = true
-    @AppStorage(SettingsKey.showDiskInMenuBar) private var showDisk = false
-    @AppStorage(SettingsKey.showBatteryInMenuBar) private var showBattery = true
-    @AppStorage(SettingsKey.showNetworkInMenuBar) private var showNetwork = false
-    @AppStorage(SettingsKey.showClaudeInMenuBar) private var showClaude = false
-    @AppStorage(SettingsKey.showCodexInMenuBar) private var showCodex = false
-    @AppStorage(SettingsKey.aiUsageDisplayMode) private var usageModeRaw = AIUsageDisplayMode.used.rawValue
+    @ObservedObject var settings: AppSettings
 
     private var usageMode: AIUsageDisplayMode {
-        AIUsageDisplayMode(rawValue: usageModeRaw) ?? .used
+        AIUsageDisplayMode(rawValue: settings.aiUsageDisplayMode) ?? .used
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(aiItems) { item in
                 AIMenuBarProvider(item: item)
             }
@@ -26,22 +18,35 @@ struct MenuBarLabel: View {
             if showsSystemText {
                 HStack(spacing: 4) {
                     Image(systemName: "gauge.with.dots.needle.bottom.50percent")
-                    Text(systemText)
+                    Text(aiItems.isEmpty ? systemText : compactSystemText)
                         .monospacedDigit()
+                        .lineLimit(1)
                 }
             }
         }
         .frame(height: 20)
+        .fixedSize(horizontal: true, vertical: true)
     }
 
     private var systemText: String {
         MetricsFormatter.menuBarText(
             snapshot: snapshot,
-            showCPU: showCPU,
-            showRAM: showRAM,
-            showDisk: showDisk,
-            showBattery: showBattery,
-            showNetwork: showNetwork
+            showCPU: settings.showCPUInMenuBar,
+            showRAM: settings.showRAMInMenuBar,
+            showDisk: settings.showDiskInMenuBar,
+            showBattery: settings.showBatteryInMenuBar,
+            showNetwork: settings.showNetworkInMenuBar
+        )
+    }
+
+    private var compactSystemText: String {
+        MetricsFormatter.compactMenuBarText(
+            snapshot: snapshot,
+            showCPU: settings.showCPUInMenuBar,
+            showRAM: settings.showRAMInMenuBar,
+            showDisk: settings.showDiskInMenuBar,
+            showBattery: settings.showBatteryInMenuBar,
+            showNetwork: settings.showNetworkInMenuBar
         )
     }
 
@@ -51,28 +56,27 @@ struct MenuBarLabel: View {
 
     private var aiItems: [AIMenuBarItem] {
         aiSnapshot.providers.compactMap { provider in
-            guard (provider.id == .claude && showClaude) || (provider.id == .codex && showCodex) else {
+            guard (provider.id == .claude && settings.showClaudeInMenuBar) || (provider.id == .codex && settings.showCodexInMenuBar) else {
                 return nil
             }
 
-            let values: [String]
+            let value: String
             if case .available = provider.status {
-                values = provider.metrics
-                    .filter { $0.usedFraction != nil }
-                    .prefix(2)
-                    .map { $0.displayValue(usageMode: usageMode) }
+                value = provider.metrics
+                    .first { $0.usedFraction != nil }?
+                    .displayValue(usageMode: usageMode) ?? "--"
             } else {
-                values = []
+                value = "--"
             }
 
-            return AIMenuBarItem(provider: provider.id, values: Array(values))
+            return AIMenuBarItem(provider: provider.id, value: value)
         }
     }
 }
 
 private struct AIMenuBarItem: Identifiable {
     var provider: AIProviderID
-    var values: [String]
+    var value: String
 
     var id: AIProviderID { provider }
 }
@@ -82,35 +86,14 @@ private struct AIMenuBarProvider: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 18)
+            AIProviderIcon(provider: item.provider, size: 14)
 
-            VStack(alignment: .leading, spacing: -3) {
-                ForEach(Array(displayValues.enumerated()), id: \.offset) { _, value in
-                    Text(value)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-            }
+            Text(item.value)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
         }
-        .frame(height: 20)
+        .frame(width: 46, height: 20, alignment: .leading)
         .fixedSize()
-    }
-
-    private var icon: String {
-        switch item.provider {
-        case .claude:
-            return "asterisk"
-        case .codex:
-            return "circle.hexagongrid"
-        }
-    }
-
-    private var displayValues: [String] {
-        if item.values.count > 1 { return item.values }
-        if item.values.count == 1 { return [item.values[0], "--"] }
-        return ["--", "--"]
     }
 }

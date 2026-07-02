@@ -38,3 +38,22 @@ import Testing
         showNetwork: false
     ) == "OpenMetrics")
 }
+
+@Test func formatsCompactMenuBarSelection() {
+    var snapshot = SystemSnapshot.empty
+    snapshot.cpuUsage = 0.42
+    snapshot.memoryUsed = 6
+    snapshot.memoryTotal = 10
+    snapshot.batteryPercent = 0.81
+    snapshot.networkInPerSecond = 12_345
+    snapshot.networkOutPerSecond = 1_234_567
+
+    #expect(MetricsFormatter.compactMenuBarText(
+        snapshot: snapshot,
+        showCPU: true,
+        showRAM: true,
+        showDisk: false,
+        showBattery: true,
+        showNetwork: true
+    ) == "C42 R60 B81 N12K/1M")
+}
