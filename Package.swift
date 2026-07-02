@@ -8,6 +8,13 @@ let package = Package(
         .executable(name: "OpenMetrics", targets: ["OpenMetrics"])
     ],
     targets: [
-        .executableTarget(name: "OpenMetrics")
+        .executableTarget(
+            name: "OpenMetrics",
+            linkerSettings: [.linkedFramework("IOKit")]
+        ),
+        .testTarget(
+            name: "OpenMetricsTests",
+            dependencies: ["OpenMetrics"]
+        )
     ]
 )

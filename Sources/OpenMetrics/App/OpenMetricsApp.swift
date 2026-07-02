@@ -2,25 +2,15 @@ import SwiftUI
 
 @main
 struct OpenMetricsApp: App {
+    @StateObject private var store = MetricsStore()
+
     var body: some Scene {
         MenuBarExtra {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("OpenMetrics", systemImage: "gauge.with.dots.needle.bottom.50percent")
-                    .font(.headline)
-
-                Text("Metriche di sistema")
-                    .foregroundStyle(.secondary)
-
-                Divider()
-
-                Text("CPU e RAM saranno collegate al lettore nativo.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(16)
-            .frame(width: 280)
+            MetricsPanel(store: store)
+                .frame(width: 380, height: 520)
+                .padding(16)
         } label: {
-            Label("OpenMetrics", systemImage: "gauge.with.dots.needle.bottom.50percent")
+            MenuBarLabel(snapshot: store.snapshot)
         }
         .menuBarExtraStyle(.window)
     }
