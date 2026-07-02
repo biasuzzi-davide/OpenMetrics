@@ -14,3 +14,9 @@ Tests/OpenMetricsTests/ Test
 ```sh
 make build
 ```
+
+Per creare e avviare l'app:
+
+```sh
+make run
+```
