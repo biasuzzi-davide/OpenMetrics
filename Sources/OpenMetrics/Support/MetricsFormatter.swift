@@ -83,4 +83,28 @@ struct MetricsFormatter {
 
         return parts.isEmpty ? "OpenMetrics" : parts.joined(separator: "  ")
     }
+
+    static func aiMenuBarText(
+        snapshot: AIUsageSnapshot,
+        showClaude: Bool,
+        showCodex: Bool,
+        usageMode: AIUsageDisplayMode,
+        resetMode: AIResetDisplayMode
+    ) -> String {
+        let parts = snapshot.providers.compactMap { provider -> String? in
+            let isEnabled = (provider.id == .claude && showClaude) || (provider.id == .codex && showCodex)
+            guard isEnabled,
+                  case .available = provider.status,
+                  let metric = provider.metrics.first(where: { $0.usedFraction != nil })
+            else {
+                return nil
+            }
+
+            let prefix = provider.id == .claude ? "CLA" : "COD"
+            let reset = metric.menuBarReset(resetMode: resetMode).map { " \($0)" } ?? ""
+            return "\(prefix) \(metric.displayValue(usageMode: usageMode))\(reset)"
+        }
+
+        return parts.joined(separator: "  ")
+    }
 }

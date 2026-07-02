@@ -10,37 +10,60 @@ struct SettingsTab: View {
     @AppStorage(SettingsKey.showDiskInMenuBar) private var showDisk = false
     @AppStorage(SettingsKey.showBatteryInMenuBar) private var showBattery = true
     @AppStorage(SettingsKey.showNetworkInMenuBar) private var showNetwork = false
+    @AppStorage(SettingsKey.showClaudeInMenuBar) private var showClaude = false
+    @AppStorage(SettingsKey.showCodexInMenuBar) private var showCodex = false
+    @AppStorage(SettingsKey.aiUsageDisplayMode) private var aiUsageDisplayMode = AIUsageDisplayMode.used.rawValue
+    @AppStorage(SettingsKey.aiResetDisplayMode) private var aiResetDisplayMode = AIResetDisplayMode.relative.rawValue
     @AppStorage(SettingsKey.launchAtLogin) private var launchAtLogin = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            DetailSection(title: "Barra menu") {
-                Toggle("CPU", isOn: $showCPU)
-                Toggle("RAM", isOn: $showRAM)
-                Toggle("Disco", isOn: $showDisk)
-                Toggle("Batteria", isOn: $showBattery)
-                Toggle("Rete", isOn: $showNetwork)
-            }
-
-            DetailSection(title: "Aggiornamento") {
-                Picker("Intervallo", selection: $refreshInterval) {
-                    Text("1s").tag(1)
-                    Text("2s").tag(2)
-                    Text("5s").tag(5)
-                    Text("10s").tag(10)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                DetailSection(title: "Barra menu") {
+                    Toggle("CPU", isOn: $showCPU)
+                    Toggle("RAM", isOn: $showRAM)
+                    Toggle("Disco", isOn: $showDisk)
+                    Toggle("Batteria", isOn: $showBattery)
+                    Toggle("Rete", isOn: $showNetwork)
+                    Toggle("Claude", isOn: $showClaude)
+                    Toggle("Codex", isOn: $showCodex)
                 }
-                .pickerStyle(.segmented)
 
-                Text("Intervalli piu alti consumano meno batteria.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                DetailSection(title: "AI") {
+                    Picker("Usage", selection: $aiUsageDisplayMode) {
+                        ForEach(AIUsageDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Picker("Reset", selection: $aiResetDisplayMode) {
+                        ForEach(AIResetDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                DetailSection(title: "Aggiornamento") {
+                    Picker("Intervallo", selection: $refreshInterval) {
+                        Text("1s").tag(1)
+                        Text("2s").tag(2)
+                        Text("5s").tag(5)
+                        Text("10s").tag(10)
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Intervalli piu alti consumano meno batteria.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                DetailSection(title: "Avvio") {
+                    Toggle("Avvio automatico", isOn: $launchAtLogin)
+                }
             }
-
-            DetailSection(title: "Avvio") {
-                Toggle("Avvio automatico", isOn: $launchAtLogin)
-            }
-
-            Spacer()
+            .padding(.trailing, 6)
         }
         .onChange(of: refreshInterval) { value in
             store.setRefreshInterval(value)

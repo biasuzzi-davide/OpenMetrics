@@ -3,6 +3,7 @@ import SwiftUI
 enum PanelTab: String, CaseIterable, Identifiable {
     case overview = "Panoramica"
     case details = "Dettagli"
+    case ai = "AI"
     case settings = "Impostazioni"
 
     var id: String { rawValue }
@@ -10,6 +11,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
 
 struct MetricsPanel: View {
     @ObservedObject var store: MetricsStore
+    @ObservedObject var aiStore: AIUsageStore
     @State private var tab = PanelTab.overview
     @AppStorage(SettingsKey.refreshInterval) private var refreshInterval = 1
 
@@ -33,6 +35,8 @@ struct MetricsPanel: View {
                     OverviewTab(snapshot: snapshot)
                 case .details:
                     DetailsTab(snapshot: snapshot)
+                case .ai:
+                    AITab(store: aiStore)
                 case .settings:
                     SettingsTab(store: store)
                 }

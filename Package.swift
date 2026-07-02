@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "OpenMetrics",
-            linkerSettings: [.linkedFramework("IOKit")]
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+                .linkedFramework("Security")
+            ]
         ),
         .testTarget(
             name: "OpenMetricsTests",
