@@ -34,6 +34,16 @@ struct DetailsTab: View {
                     InfoRow("Interfaccia", snapshot.networkInterface ?? "n/d")
                     InfoRow("IP", snapshot.ipAddress ?? "n/d")
                 }
+
+                if !snapshot.componentTemperatures.isEmpty {
+                    DetailSection(title: "Temperature") {
+                        ForEach(snapshot.componentTemperatures.keys.sorted(), id: \.self) { component in
+                            if let temp = snapshot.componentTemperatures[component] {
+                                InfoRow(component, MetricsFormatter.temperature(temp))
+                            }
+                        }
+                    }
+                }
             }
             .padding(.trailing, 6)
         }

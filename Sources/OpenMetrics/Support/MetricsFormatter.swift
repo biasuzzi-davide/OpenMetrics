@@ -51,6 +51,10 @@ struct MetricsFormatter {
         }
     }
 
+    static func temperature(_ celsius: Double) -> String {
+        String(format: "%.1f°C", celsius)
+    }
+
     static func menuBarText(
         snapshot: SystemSnapshot,
         showCPU: Bool,

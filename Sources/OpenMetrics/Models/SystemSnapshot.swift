@@ -28,6 +28,7 @@ struct SystemSnapshot: Equatable {
     var lowPowerModeEnabled: Bool
     var hostName: String
     var osVersion: String
+    var componentTemperatures: [String: Double]
     var updatedAt: Date
 
     static let empty = SystemSnapshot(
@@ -58,6 +59,7 @@ struct SystemSnapshot: Equatable {
         lowPowerModeEnabled: false,
         hostName: "Mac",
         osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+        componentTemperatures: [:],
         updatedAt: .now
     )
 

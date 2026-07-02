@@ -5,4 +5,5 @@ enum SettingsKey {
     static let showDiskInMenuBar = "showDiskInMenuBar"
     static let showBatteryInMenuBar = "showBatteryInMenuBar"
     static let showNetworkInMenuBar = "showNetworkInMenuBar"
+    static let launchAtLogin = "launchAtLogin"
 }

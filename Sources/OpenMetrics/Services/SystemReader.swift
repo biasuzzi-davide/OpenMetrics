@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import IOKit
 import IOKit.ps
 
 final class SystemReader {
@@ -11,6 +12,7 @@ final class SystemReader {
         let disk = readDisk()
         let network = readNetwork()
         let battery = readBattery()
+        let componentTemperatures = readComponentTemperatures()
 
         return SystemSnapshot(
             cpuUsage: readCPUUsage(),
@@ -40,6 +42,7 @@ final class SystemReader {
             lowPowerModeEnabled: ProcessInfo.processInfo.isLowPowerModeEnabled,
             hostName: Host.current().localizedName ?? ProcessInfo.processInfo.hostName,
             osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+            componentTemperatures: componentTemperatures,
             updatedAt: .now
         )
     }
@@ -288,6 +291,103 @@ final class SystemReader {
         guard result == 0 else { return nil }
         let bytes = host.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
         return String(decoding: bytes, as: UTF8.self)
+    }
+
+    private func readComponentTemperatures() -> [String: Double] {
+        var temperatures: [String: Double] = [:]
+        let serviceNames = ["IOPlatformExpertDevice", "AppleSMC", "IOPlatformPlugin"]
+
+        for name in serviceNames {
+            guard let service = matchingService(named: name) else { continue }
+            defer { IOObjectRelease(service) }
+
+            for sample in temperatureSamples(from: service) {
+                if temperatures[sample.name] == nil {
+                    temperatures[sample.name] = sample.value
+                }
+            }
+
+            if !temperatures.isEmpty { break }
+        }
+
+        return temperatures
+    }
+
+    private func matchingService(named name: String) -> io_service_t? {
+        guard let matching = IOServiceMatching(name) else { return nil }
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, matching)
+        return service == 0 ? nil : service
+    }
+
+    private func temperatureSamples(from service: io_service_t) -> [(name: String, value: Double)] {
+        var dictionary: Unmanaged<CFMutableDictionary>? = nil
+        guard IORegistryEntryCreateCFProperties(service, &dictionary, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+              let rawDictionary = dictionary?.takeRetainedValue() as? [AnyHashable: Any] else {
+            return []
+        }
+
+        var samples: [(name: String, value: Double)] = []
+
+        for item in rawDictionary {
+            guard let key = item.key as? String else { continue }
+            let lower = key.lowercased()
+            guard lower.contains("temp") || lower.contains("temperature") else { continue }
+
+            guard let temperature = decodeTemperature(item.value) else { continue }
+            let name = readableTemperatureName(for: lower)
+            if samples.first(where: { $0.name == name }) == nil {
+                samples.append((name: name, value: temperature))
+            }
+        }
+
+        return samples.sorted { $0.name < $1.name }
+    }
+
+    private func readableTemperatureName(for key: String) -> String {
+        if key.contains("cpu") { return "CPU" }
+        if key.contains("gpu") { return "GPU" }
+        if key.contains("ambient") { return "Ambiente" }
+        if key.contains("skin") { return "Dissipatore" }
+
+        return key
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .joined(separator: " ")
+            .capitalized
+    }
+
+    private func decodeTemperature(_ value: Any) -> Double? {
+        if let number = value as? NSNumber {
+            return normalizedCelsius(number.doubleValue)
+        }
+
+        guard let data = value as? Data else {
+            return nil
+        }
+
+        return data.withUnsafeBytes { bytes in
+            guard bytes.count >= 2 else { return nil as Double? }
+            let value = Double(bytes.load(fromByteOffset: 0, as: UInt16.self))
+            return normalizedCelsius(value)
+        }
+    }
+
+    private func normalizedCelsius(_ value: Double) -> Double? {
+        let candidates = [value, value / 10, value / 100, value / 1000]
+
+        for c in candidates {
+            if c > -40 && c < 150 { return c }
+        }
+
+        if (273..<400).contains(Int(value)) {
+            return value - 273.15
+        }
+
+        if (273..<400).contains(Int(value * 10)) {
+            return (value / 10) - 273.15
+        }
+
+        return nil
     }
 }
 

@@ -44,6 +44,12 @@ struct OverviewTab: View {
                 MiniMetric(icon: "arrow.up", title: "Rete out", value: MetricsFormatter.rate(snapshot.networkOutPerSecond))
                 MiniMetric(icon: "thermometer.medium", title: "Termico", value: MetricsFormatter.thermal(snapshot.thermalState))
                 MiniMetric(icon: "clock", title: "Uptime", value: MetricsFormatter.duration(snapshot.uptime))
+
+                ForEach(snapshot.componentTemperatures.keys.sorted(), id: \.self) { component in
+                    if let temperature = snapshot.componentTemperatures[component] {
+                        MiniMetric(icon: "thermometer", title: component, value: MetricsFormatter.temperature(temperature))
+                    }
+                }
             }
         }
     }

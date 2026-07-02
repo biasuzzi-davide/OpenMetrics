@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsTab: View {
     var store: MetricsStore
@@ -9,6 +10,7 @@ struct SettingsTab: View {
     @AppStorage(SettingsKey.showDiskInMenuBar) private var showDisk = false
     @AppStorage(SettingsKey.showBatteryInMenuBar) private var showBattery = true
     @AppStorage(SettingsKey.showNetworkInMenuBar) private var showNetwork = false
+    @AppStorage(SettingsKey.launchAtLogin) private var launchAtLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -34,10 +36,30 @@ struct SettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            DetailSection(title: "Avvio") {
+                Toggle("Avvio automatico", isOn: $launchAtLogin)
+            }
+
             Spacer()
         }
         .onChange(of: refreshInterval) { value in
             store.setRefreshInterval(value)
+        }
+        .onAppear {
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        }
+        .onChange(of: launchAtLogin) { newValue in
+            Task {
+                do {
+                    if newValue {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    launchAtLogin = false
+                }
+            }
         }
     }
 }
