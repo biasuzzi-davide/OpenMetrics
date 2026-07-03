@@ -2,8 +2,8 @@ import SwiftUI
 
 enum PanelTab: String, CaseIterable, Identifiable {
     case overview = "Panoramica"
-    case details = "Dettagli"
     case ai = "AI"
+    case details = "Dettagli"
     case settings = "Impostazioni"
 
     var id: String { rawValue }

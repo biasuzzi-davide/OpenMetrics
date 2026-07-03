@@ -139,8 +139,49 @@ private enum AIProviderAppIcons {
             .appendingPathComponent("Resources")
             .appendingPathComponent("\(name).png")
         guard let image = NSImage(contentsOf: url) else { return nil }
-        image.isTemplate = true
-        return image
+        let trimmed = trimmingTransparentBorder(image)
+        trimmed.isTemplate = true
+        return trimmed
+    }
+
+    // Le icone tray hanno margini trasparenti diversi tra loro: senza crop
+    // la stessa cornice le mostra a grandezze percepite diverse.
+    private static func trimmingTransparentBorder(_ image: NSImage) -> NSImage {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let context = CGContext(
+                  data: nil,
+                  width: cg.width,
+                  height: cg.height,
+                  bitsPerComponent: 8,
+                  bytesPerRow: cg.width * 4,
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              )
+        else {
+            return image
+        }
+
+        context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+        guard let data = context.data else { return image }
+        let pixels = data.bindMemory(to: UInt8.self, capacity: cg.width * cg.height * 4)
+
+        var minX = cg.width, minY = cg.height, maxX = -1, maxY = -1
+        for y in 0..<cg.height {
+            for x in 0..<cg.width where pixels[(y * cg.width + x) * 4 + 3] > 8 {
+                minX = min(minX, x)
+                maxX = max(maxX, x)
+                minY = min(minY, y)
+                maxY = max(maxY, y)
+            }
+        }
+
+        guard maxX >= minX, maxY >= minY,
+              let cropped = cg.cropping(to: CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1))
+        else {
+            return image
+        }
+
+        return NSImage(cgImage: cropped, size: .zero)
     }
 }
 

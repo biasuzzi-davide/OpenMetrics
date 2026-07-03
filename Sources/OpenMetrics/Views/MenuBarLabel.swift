@@ -10,22 +10,39 @@ struct MenuBarLabel: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
+        Image(nsImage: renderedImage)
+    }
+
+    // MenuBarExtra non ridimensiona lo status item quando la label cambia larghezza:
+    // renderizzare tutto in un'unica immagine template evita il contenuto tagliato.
+    private var renderedImage: NSImage {
+        let renderer = ImageRenderer(content: labelContent)
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+
+        guard let image = renderer.nsImage else {
+            return NSImage(size: NSSize(width: 1, height: 20))
+        }
+
+        image.isTemplate = true
+        return image
+    }
+
+    private var labelContent: some View {
+        HStack(spacing: 8) {
             ForEach(aiItems) { item in
                 AIMenuBarProvider(item: item)
             }
 
             if showsSystemText {
-                HStack(spacing: 4) {
-                    Image(systemName: "gauge.with.dots.needle.bottom.50percent")
-                    Text(aiItems.isEmpty ? systemText : compactSystemText)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
+                Text(aiItems.isEmpty ? systemText : compactSystemText)
+                    .monospacedDigit()
+                    .lineLimit(1)
             }
         }
-        .frame(height: 20)
+        .frame(height: 22)
         .fixedSize(horizontal: true, vertical: true)
+        .foregroundStyle(.black)
+        .environment(\.colorScheme, .light)
     }
 
     private var systemText: String {
@@ -60,23 +77,27 @@ struct MenuBarLabel: View {
                 return nil
             }
 
-            let value: String
-            if case .available = provider.status {
-                value = provider.metrics
-                    .first { $0.usedFraction != nil }?
-                    .displayValue(usageMode: usageMode) ?? "--"
-            } else {
-                value = "--"
+            guard case .available = provider.status else {
+                return AIMenuBarItem(provider: provider.id, session: "--", weekly: nil)
             }
 
-            return AIMenuBarItem(provider: provider.id, value: value)
+            let usable = provider.metrics.filter { $0.usedFraction != nil }
+            let session = usable.first { $0.title == "Sessione" } ?? usable.first
+            let weekly = usable.first { $0.title == "Settimanale" }
+
+            return AIMenuBarItem(
+                provider: provider.id,
+                session: session?.displayValue(usageMode: usageMode) ?? "--",
+                weekly: weekly?.displayValue(usageMode: usageMode)
+            )
         }
     }
 }
 
 private struct AIMenuBarItem: Identifiable {
     var provider: AIProviderID
-    var value: String
+    var session: String
+    var weekly: String?
 
     var id: AIProviderID { provider }
 }
@@ -86,14 +107,22 @@ private struct AIMenuBarProvider: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            AIProviderIcon(provider: item.provider, size: 14)
+            AIProviderIcon(provider: item.provider, size: 16)
 
-            Text(item.value)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+            if let weekly = item.weekly {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(item.session)
+                    Text(weekly)
+                }
+                .font(.system(size: 9, weight: .medium))
                 .monospacedDigit()
                 .lineLimit(1)
+            } else {
+                Text(item.session)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
         }
-        .frame(width: 46, height: 20, alignment: .leading)
         .fixedSize()
     }
 }
