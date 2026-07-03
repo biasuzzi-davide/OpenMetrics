@@ -58,8 +58,76 @@ Per avviarla:
 make run
 ```
 
+## Distribuzione macOS
+
+Senza Apple Developer Program puoi creare un DMG installabile con drag in Applications:
+
+```sh
+make dmg
+```
+
+Il file viene creato in:
+
+```text
+dist/OpenMetrics-macOS.dmg
+```
+
+Al primo avvio macOS mostrera comunque l'avviso Gatekeeper: apri con click destro, `Open`, poi conferma.
+
+Per creare lo ZIP firmato e notarizzato serve:
+
+- account Apple Developer attivo;
+- certificato `Developer ID Application` installato nel Keychain;
+- profilo notarile salvato in `notarytool`.
+
+Configura il profilo notarile una volta sola:
+
+```sh
+xcrun notarytool store-credentials openmetrics-notary \
+  --apple-id "apple-id@example.com" \
+  --team-id "TEAMID" \
+  --password "app-specific-password"
+```
+
+Poi crea lo ZIP distribuibile:
+
+```sh
+make notarize DISTRIBUTION_CODESIGN_ID="Developer ID Application: Nome Cognome (TEAMID)"
+```
+
+L'asset pronto per GitHub Release viene creato in:
+
+```text
+dist/OpenMetrics-macOS.zip
+```
+
+La workflow `.github/workflows/release.yml` pubblica lo stesso ZIP quando viene pushato un tag `v*`. Richiede questi secrets GitHub:
+
+- `MACOS_CERTIFICATE_P12_BASE64`
+- `MACOS_CERTIFICATE_PASSWORD`
+- `APPLE_ID`
+- `APPLE_TEAM_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
+
+Secrets opzionali:
+
+- `MACOS_CODESIGN_IDENTITY`
+- `MACOS_KEYCHAIN_PASSWORD`
+
 ## Test
 
 ```sh
 make test
+```
+
+## GitHub Pages
+
+La pagina statica del progetto e in `docs/index.html`.
+
+Per pubblicarla su GitHub Pages: repository Settings, Pages, Deploy from a branch, branch `main`, cartella `/docs`.
+
+URL atteso:
+
+```text
+https://biasuzzi-davide.github.io/OpenMetrics/
 ```

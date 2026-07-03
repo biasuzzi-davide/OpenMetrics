@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenMetrics - native macOS metrics in the menu bar</title>
+  <meta name="description" content="OpenMetrics e una piccola app macOS da menu bar per metriche di sistema e usage Claude/Codex, locale e senza dipendenze esterne.">
+  <meta property="og:title" content="OpenMetrics">
+  <meta property="og:description" content="Metriche sistema e usage AI in un pannello nativo da menu bar macOS.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="oklch(0.09 0 0)">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: oklch(0.09 0 0);
+      --surface: oklch(0.145 0.006 340);
+      --surface-2: oklch(0.19 0.01 340);
+      --ink: oklch(0.965 0 0);
+      --muted: oklch(0.72 0.012 340);
+      --faint: oklch(0.48 0.014 340);
+      --line: oklch(0.28 0.012 340);
+      --primary: oklch(0.6 0.21 340);
+      --primary-soft: oklch(0.27 0.09 340);
+      --accent: oklch(0.74 0.16 190);
+      --ok: oklch(0.72 0.17 150);
+      --warn: oklch(0.78 0.16 80);
+      --danger: oklch(0.68 0.18 25);
+      --z-sticky: 10;
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      line-height: 1.55;
+      overflow-x: hidden;
+      text-rendering: optimizeLegibility;
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 75% 8%, color-mix(in oklch, var(--primary) 32%, transparent), transparent 34rem),
+        radial-gradient(circle at 8% 40%, color-mix(in oklch, var(--accent) 18%, transparent), transparent 28rem);
+      content: "";
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    a {
+      color: inherit;
+      text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+      text-underline-offset: 0.22em;
+    }
+
+    a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin-inline: auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      border-bottom: 1px solid color-mix(in oklch, var(--line) 70%, transparent);
+      background: color-mix(in oklch, var(--bg) 82%, transparent);
+      backdrop-filter: blur(22px);
+    }
+
+    .nav {
+      display: flex;
+      min-height: 64px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 720;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    .mark {
+      display: grid;
+      width: 31px;
+      height: 31px;
+      place-items: center;
+      border: 1px solid color-mix(in oklch, var(--ink) 18%, transparent);
+      border-radius: 9px;
+      background: var(--surface);
+      color: var(--primary);
+      font: 720 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .links a {
+      text-decoration: none;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      padding: 0 15px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .hero {
+      min-height: min(780px, calc(100vh - 120px));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-grid {
+      display: grid;
+      min-height: min(780px, calc(100vh - 120px));
+      grid-template-columns: minmax(0, 0.86fr) minmax(420px, 1.14fr);
+      gap: clamp(40px, 6vw, 86px);
+      align-items: center;
+      padding: clamp(44px, 7vw, 72px) 0;
+    }
+
+    .hero-grid > *,
+    .split > *,
+    .local-panel > *,
+    .closing > * {
+      min-width: 0;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 0 5px color-mix(in oklch, var(--ok) 16%, transparent);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 10ch;
+      margin-bottom: 24px;
+      font-size: clamp(3.45rem, 9vw, 6rem);
+      line-height: 0.95;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .lead {
+      max-width: 680px;
+      margin-bottom: 30px;
+      color: color-mix(in oklch, var(--ink) 86%, var(--muted));
+      font-size: clamp(1.18rem, 2vw, 1.55rem);
+      line-height: 1.32;
+      overflow-wrap: break-word;
+      text-wrap: pretty;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 42px;
+    }
+
+    .button.ghost {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .signal-list {
+      display: grid;
+      max-width: 680px;
+      gap: 1px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--line);
+    }
+
+    .signal {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      background: color-mix(in oklch, var(--surface) 86%, transparent);
+      padding: 15px 17px;
+    }
+
+    .signal strong {
+      color: var(--ink);
+      font: 680 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+
+    .signal span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .product-visual {
+      position: relative;
+      min-width: 0;
+      max-width: 100%;
+      padding-top: 42px;
+    }
+
+    .menubar {
+      position: absolute;
+      top: 0;
+      right: 5%;
+      left: 11%;
+      display: flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid color-mix(in oklch, var(--ink) 13%, transparent);
+      border-radius: 12px;
+      background: oklch(0.98 0 0);
+      color: oklch(0.18 0 0);
+      padding: 0 14px;
+      font-size: 12px;
+    }
+
+    .menubar-left,
+    .menubar-right {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 11px;
+      white-space: nowrap;
+    }
+
+    .menubar-right {
+      overflow: hidden;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-overflow: ellipsis;
+    }
+
+    .panel {
+      overflow: hidden;
+      max-width: 100%;
+      border: 1px solid color-mix(in oklch, var(--ink) 12%, transparent);
+      border-radius: 18px;
+      background: oklch(0.965 0 0);
+      color: oklch(0.17 0 0);
+      box-shadow: 0 8px 0 oklch(0.04 0 0 / 0.95);
+      transform: rotate(-1.2deg);
+    }
+
+    .panel-top {
+      display: flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid oklch(0.88 0 0);
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .traffic {
+      display: flex;
+      gap: 7px;
+    }
+
+    .traffic i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+
+    .traffic i:nth-child(2) {
+      background: var(--warn);
+    }
+
+    .traffic i:nth-child(3) {
+      background: var(--ok);
+    }
+
+    .panel-body {
+      display: grid;
+      grid-template-columns: 162px minmax(0, 1fr);
+      min-height: 500px;
+    }
+
+    .sidebar {
+      border-right: 1px solid oklch(0.88 0 0);
+      background: oklch(0.925 0 0);
+      padding: 16px 12px;
+    }
+
+    .tab {
+      display: flex;
+      min-height: 36px;
+      align-items: center;
+      gap: 9px;
+      border-radius: 9px;
+      padding: 0 10px;
+      color: oklch(0.38 0 0);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .tab + .tab {
+      margin-top: 5px;
+    }
+
+    .tab.active {
+      background: white;
+      color: oklch(0.17 0 0);
+    }
+
+    .tab-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .tab:nth-child(2) .tab-dot {
+      background: var(--accent);
+    }
+
+    .tab:nth-child(3) .tab-dot {
+      background: var(--ok);
+    }
+
+    .tab:nth-child(4) .tab-dot {
+      background: oklch(0.45 0 0);
+    }
+
+    .dashboard {
+      padding: 20px;
+    }
+
+    .dashboard-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .dashboard-head h2 {
+      margin-bottom: 4px;
+      font-size: 25px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .dashboard-head p {
+      margin-bottom: 0;
+      color: oklch(0.45 0 0);
+      font-size: 13px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      background: oklch(0.91 0.03 150);
+      color: oklch(0.28 0.09 150);
+      padding: 6px 9px;
+      font: 720 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: nowrap;
+    }
+
+    .metric-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr) 58px;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .metric-row span {
+      color: oklch(0.38 0 0);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .track {
+      min-width: 0;
+      height: 8px;
+      border-radius: 999px;
+      background: oklch(0.88 0 0);
+      overflow: hidden;
+    }
+
+    .track i {
+      display: block;
+      width: var(--value);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--primary);
+    }
+
+    .metric-row:nth-child(2) .track i {
+      background: var(--accent);
+    }
+
+    .metric-row:nth-child(3) .track i {
+      background: var(--warn);
+    }
+
+    .metric-row:nth-child(4) .track i {
+      background: var(--ok);
+    }
+
+    .ai-band {
+      margin-top: 24px;
+      border-radius: 14px;
+      background: oklch(0.18 0 0);
+      color: white;
+      padding: 16px;
+    }
+
+    .ai-band h3 {
+      margin-bottom: 14px;
+      font-size: 15px;
+    }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .ai-item {
+      border: 1px solid oklch(1 0 0 / 0.13);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .ai-item span {
+      display: block;
+      color: oklch(0.75 0 0);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .ai-item strong {
+      font: 720 24px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: -0.02em;
+    }
+
+    section {
+      border-bottom: 1px solid var(--line);
+      padding: clamp(66px, 10vw, 118px) 0;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+      gap: clamp(34px, 6vw, 76px);
+      align-items: start;
+    }
+
+    .section-title {
+      position: sticky;
+      top: 96px;
+    }
+
+    .section-title h2 {
+      max-width: 11ch;
+      margin-bottom: 18px;
+      font-size: clamp(2.1rem, 5vw, 4.4rem);
+      line-height: 0.98;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .section-title p {
+      max-width: 34ch;
+      margin-bottom: 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .spec-list {
+      display: grid;
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .spec {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr);
+      gap: 24px;
+      background: color-mix(in oklch, var(--surface) 88%, transparent);
+      padding: 22px;
+    }
+
+    .spec h3 {
+      margin-bottom: 0;
+      color: var(--ink);
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+
+    .spec p {
+      margin-bottom: 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .local-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 28px;
+      align-items: end;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: color-mix(in oklch, var(--surface) 90%, transparent);
+      padding: clamp(24px, 5vw, 46px);
+    }
+
+    .local-panel h2 {
+      max-width: 12ch;
+      margin-bottom: 20px;
+      font-size: clamp(2.35rem, 5vw, 4.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .local-panel p {
+      max-width: 66ch;
+      margin-bottom: 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .paths {
+      display: grid;
+      gap: 10px;
+      color: color-mix(in oklch, var(--ink) 88%, var(--muted));
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .path {
+      border: 1px solid color-mix(in oklch, var(--line) 78%, transparent);
+      border-radius: 10px;
+      background: oklch(0.11 0 0);
+      padding: 10px 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .closing {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+    }
+
+    .closing h2 {
+      max-width: 13ch;
+      margin-bottom: 0;
+      font-size: clamp(2.2rem, 5vw, 4.6rem);
+      line-height: 1;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .closing p {
+      max-width: 46ch;
+      margin-bottom: 22px;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    footer {
+      padding: 30px 0 44px;
+      color: var(--faint);
+      font-size: 14px;
+    }
+
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .reveal {
+      animation: enter 760ms var(--ease-out) both;
+    }
+
+    .product-visual.reveal {
+      animation-delay: 110ms;
+    }
+
+    @keyframes enter {
+      from {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        filter: blur(0);
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .reveal {
+        animation: none;
+      }
+
+      .panel {
+        transform: none;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .hero-grid,
+      .split,
+      .local-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .hero-grid {
+        min-height: auto;
+      }
+
+      .section-title {
+        position: static;
+      }
+
+      .section-title h2,
+      .local-panel h2,
+      .closing h2 {
+        max-width: 16ch;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .shell {
+        width: min(1180px, calc(100% - 28px));
+      }
+
+      .topbar {
+        position: static;
+      }
+
+      .nav {
+        min-height: auto;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 0;
+      }
+
+      .links {
+        margin-left: auto;
+        gap: 0;
+      }
+
+      .links a:not(.button) {
+        display: none;
+      }
+
+      .button {
+        min-height: 38px;
+        padding-inline: 12px;
+      }
+
+      .hero-grid {
+        gap: 30px;
+        padding: 42px 0 42px;
+      }
+
+      h1 {
+        max-width: 100%;
+        font-size: clamp(2.85rem, 14.4vw, 3.55rem);
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        font-size: 1.12rem;
+      }
+
+      .signal,
+      .spec {
+        grid-template-columns: 1fr;
+        gap: 7px;
+      }
+
+      .menubar {
+        right: 0;
+        left: 0;
+      }
+
+      .product-visual {
+        max-height: 285px;
+        overflow: hidden;
+        padding-top: 40px;
+        contain: paint;
+      }
+
+      .menubar-left {
+        display: none;
+      }
+
+      .menubar-right {
+        flex: 1;
+        gap: 9px;
+        font-size: 11px;
+      }
+
+      .panel {
+        width: 100%;
+        border-radius: 14px;
+        transform: none;
+      }
+
+      .panel-body {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .sidebar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border-right: 0;
+        border-bottom: 1px solid oklch(0.88 0 0);
+      }
+
+      .tab + .tab {
+        margin-top: 0;
+      }
+
+      .dashboard {
+        padding: 16px;
+      }
+
+      .dashboard-head {
+        display: block;
+      }
+
+      .pill {
+        display: inline-block;
+        margin-top: 12px;
+      }
+
+      .metric-row {
+        grid-template-columns: 62px minmax(0, 1fr) 44px;
+        gap: 9px;
+      }
+
+      .ai-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .local-panel {
+        padding: 22px;
+      }
+
+      .closing {
+        display: block;
+      }
+
+      .closing h2 {
+        margin-bottom: 18px;
+      }
+
+      footer .shell {
+        display: block;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        width: min(362px, calc(100% - 28px));
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <nav class="shell nav" aria-label="Navigazione principale">
+      <a class="brand" href="#top" aria-label="OpenMetrics home">
+        <span class="mark" aria-hidden="true">OM</span>
+        <span>OpenMetrics</span>
+      </a>
+      <div class="links">
+        <a href="#metrics">Metriche</a>
+        <a href="#local">Locale</a>
+        <a class="button" href="https://github.com/biasuzzi-davide/OpenMetrics/releases/latest/download/OpenMetrics-macOS.dmg">Download</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="shell hero-grid">
+        <div class="reveal">
+          <p class="kicker"><span class="status-dot" aria-hidden="true"></span>macOS menu bar utility &middot; SwiftUI &middot; native APIs</p>
+          <h1 id="hero-title">OpenMetrics</h1>
+          <p class="lead">System metrics and Claude/Codex usage in one native macOS panel. Built for people who want signal in the menu bar, not another dashboard.</p>
+          <div class="actions" aria-label="Azioni principali">
+            <a class="button" href="https://github.com/biasuzzi-davide/OpenMetrics/releases/latest/download/OpenMetrics-macOS.dmg">Download for macOS</a>
+            <a class="button ghost" href="https://github.com/biasuzzi-davide/OpenMetrics">Open on GitHub</a>
+          </div>
+          <div class="signal-list" aria-label="Segnali prodotto">
+            <div class="signal">
+              <strong>Local</strong>
+              <span>Reads system state and existing AI sessions from the Mac.</span>
+            </div>
+            <div class="signal">
+              <strong>Native</strong>
+              <span>SwiftUI, IOKit, Security, menu bar behavior, no external runtime.</span>
+            </div>
+            <div class="signal">
+              <strong>Glanceable</strong>
+              <span>CPU, RAM, network, battery, disk, thermal state, Claude and Codex.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-visual reveal" aria-label="Mockup del pannello OpenMetrics">
+          <div class="menubar">
+            <div class="menubar-left">
+              <strong>Finder</strong>
+              <span>File</span>
+              <span>Edit</span>
+              <span>View</span>
+            </div>
+            <div class="menubar-right">
+              <span>CPU 12%</span>
+              <span>RAM 51%</span>
+              <span>Claude 47%</span>
+              <span>Codex 21%</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-top">
+              <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span>OpenMetrics</span>
+              <span>2s</span>
+            </div>
+            <div class="panel-body">
+              <aside class="sidebar" aria-label="Tab OpenMetrics">
+                <div class="tab active"><span class="tab-dot"></span>Overview</div>
+                <div class="tab"><span class="tab-dot"></span>Details</div>
+                <div class="tab"><span class="tab-dot"></span>AI</div>
+                <div class="tab"><span class="tab-dot"></span>Settings</div>
+              </aside>
+              <div class="dashboard">
+                <div class="dashboard-head">
+                  <div>
+                    <h2>Overview</h2>
+                    <p>Active interface en0 &middot; thermal nominal</p>
+                  </div>
+                  <span class="pill">live</span>
+                </div>
+
+                <div class="metric-stack">
+                  <div class="metric-row" style="--value: 28%">
+                    <span>CPU</span>
+                    <div class="track"><i></i></div>
+                    <span>12%</span>
+                  </div>
+                  <div class="metric-row" style="--value: 51%">
+                    <span>RAM</span>
+                    <div class="track"><i></i></div>
+                    <span>8.1G</span>
+                  </div>
+                  <div class="metric-row" style="--value: 64%">
+                    <span>Net in</span>
+                    <div class="track"><i></i></div>
+                    <span>4.8M</span>
+                  </div>
+                  <div class="metric-row" style="--value: 79%">
+                    <span>AI left</span>
+                    <div class="track"><i></i></div>
+                    <span>79%</span>
+                  </div>
+                </div>
+
+                <div class="ai-band">
+                  <h3>AI usage</h3>
+                  <div class="ai-grid">
+                    <div class="ai-item">
+                      <span>Claude</span>
+                      <strong>47%</strong>
+                    </div>
+                    <div class="ai-item">
+                      <span>Codex</span>
+                      <strong>21%</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="metrics">
+      <div class="shell split">
+        <div class="section-title">
+          <h2>What it watches.</h2>
+          <p>OpenMetrics keeps the noisy parts compressed into one menu bar surface.</p>
+        </div>
+        <div class="spec-list">
+          <article class="spec">
+            <h3>System load</h3>
+            <p>CPU usage, load average, active cores, RAM, cache, wired/compressed memory, swap, disk usage and available storage.</p>
+          </article>
+          <article class="spec">
+            <h3>Mac state</h3>
+            <p>Battery percent and charging state, estimated time remaining, network throughput, active interface, IP address, uptime, thermal state and component temperatures.</p>
+          </article>
+          <article class="spec">
+            <h3>AI limits</h3>
+            <p>Claude and Codex usage, detected plan, session or weekly limits, reset windows, credits and credential status.</p>
+          </article>
+          <article class="spec">
+            <h3>Control surface</h3>
+            <p>Configurable menu bar labels, manual refresh, automatic refresh at 1, 2, 5 or 10 seconds, and launch at login.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="local">
+      <div class="shell local-panel">
+        <div>
+          <h2>Local by default.</h2>
+          <p>OpenMetrics uses existing local sessions. Claude is read from Claude Code Keychain or the Claude credentials file. Codex is read from CODEX_HOME, standard config locations, or Keychain. If credentials are missing, the AI tab reports login instead of pretending.</p>
+        </div>
+        <div class="paths" aria-label="Percorsi credenziali supportati">
+          <div class="path">~/.claude/.credentials.json</div>
+          <div class="path">CODEX_HOME/auth.json</div>
+          <div class="path">~/.config/codex/auth.json</div>
+          <div class="path">~/.codex/auth.json</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell closing">
+        <h2>Small enough to stay open.</h2>
+        <div>
+          <p>No web app, no account flow, no background service stack. Just a native Swift package that turns the menu bar into a compact telemetry surface.</p>
+          <a class="button" href="https://github.com/biasuzzi-davide/OpenMetrics/releases/latest/download/OpenMetrics-macOS.dmg">Download latest</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <span>OpenMetrics &middot; macOS menu bar metrics</span>
+      <a href="https://github.com/biasuzzi-davide/OpenMetrics/blob/main/LICENSE">LICENSE</a>
+    </div>
+  </footer>
+</body>
+</html>
