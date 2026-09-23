@@ -35,6 +35,9 @@ final class AppSettings: ObservableObject {
     @Published var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: SettingsKey.launchAtLogin) }
     }
+    @Published var showDockIcon: Bool {
+        didSet { defaults.set(showDockIcon, forKey: SettingsKey.showDockIcon) }
+    }
 
     private let defaults: UserDefaults
 
@@ -51,7 +54,8 @@ final class AppSettings: ObservableObject {
             SettingsKey.showCodexInMenuBar: false,
             SettingsKey.aiUsageDisplayMode: AIUsageDisplayMode.used.rawValue,
             SettingsKey.aiResetDisplayMode: AIResetDisplayMode.relative.rawValue,
-            SettingsKey.launchAtLogin: false
+            SettingsKey.launchAtLogin: false,
+            SettingsKey.showDockIcon: false
         ])
 
         refreshInterval = defaults.integer(forKey: SettingsKey.refreshInterval)
@@ -65,5 +69,6 @@ final class AppSettings: ObservableObject {
         aiUsageDisplayMode = defaults.string(forKey: SettingsKey.aiUsageDisplayMode) ?? AIUsageDisplayMode.used.rawValue
         aiResetDisplayMode = defaults.string(forKey: SettingsKey.aiResetDisplayMode) ?? AIResetDisplayMode.relative.rawValue
         launchAtLogin = defaults.bool(forKey: SettingsKey.launchAtLogin)
+        showDockIcon = defaults.bool(forKey: SettingsKey.showDockIcon)
     }
 }

@@ -10,4 +10,5 @@ enum SettingsKey {
     static let aiUsageDisplayMode = "aiUsageDisplayMode"
     static let aiResetDisplayMode = "aiResetDisplayMode"
     static let launchAtLogin = "launchAtLogin"
+    static let showDockIcon = "showDockIcon"
 }

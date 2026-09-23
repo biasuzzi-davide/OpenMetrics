@@ -10,7 +10,7 @@ struct AIUsageSnapshot: Equatable, Sendable {
     )
 }
 
-enum AIProviderID: String, CaseIterable, Identifiable, Sendable {
+enum AIProviderID: String, CaseIterable, Identifiable, Codable, Sendable {
     case claude = "Claude"
     case codex = "Codex"
 

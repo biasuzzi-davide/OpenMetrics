@@ -50,12 +50,20 @@ struct SettingsTab: View {
 
                 DetailSection(title: "Avvio") {
                     Toggle("Avvio automatico", isOn: $settings.launchAtLogin)
+                    Toggle("Icona nel Dock", isOn: $settings.showDockIcon)
+
+                    Text("Senza icona nel Dock l'app resta solo nella barra menu e ricompare quando apri lo storico.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.trailing, 6)
         }
         .onChange(of: settings.refreshInterval) { value in
             store.setRefreshInterval(value)
+        }
+        .onChange(of: settings.showDockIcon) { value in
+            DockPolicy.setPinned(value)
         }
         .onAppear {
             settings.launchAtLogin = (SMAppService.mainApp.status == .enabled)

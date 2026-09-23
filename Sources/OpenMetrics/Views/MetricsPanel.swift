@@ -70,6 +70,14 @@ private struct Header: View {
 
             Spacer()
 
+            Button {
+                UsageWindowController.shared.show()
+            } label: {
+                Image(systemName: "chart.bar.xaxis")
+            }
+            .buttonStyle(.bordered)
+            .help("Apri lo storico di utilizzo")
+
             VStack(alignment: .trailing, spacing: 2) {
                 Text(snapshot.updatedAt, style: .time)
                     .font(.system(.body, design: .monospaced).weight(.semibold))
