@@ -1,62 +1,44 @@
 import AppKit
 import SwiftUI
 
-struct Footer: View {
-    var store: MetricsStore
-    var snapshot: SystemSnapshot
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text("Uptime \(MetricsFormatter.duration(snapshot.uptime))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Button {
-                store.refresh()
-            } label: {
-                Label("Aggiorna", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(.bordered)
-
-            Button {
-                NSApp.terminate(nil)
-            } label: {
-                Label("Esci", systemImage: "power")
-            }
-            .buttonStyle(.bordered)
-        }
-    }
-}
-
+/// Riga di metrica: badge colorato, titolo, valore e barra di capacita nella stessa tinta.
 struct MetricRow: View {
     var icon: String
     var title: String
     var value: String
     var detail: String
-    var progress: Double
+    var progress: Double?
+    var tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .frame(width: 18)
+        HStack(alignment: .top, spacing: 10) {
+            IconBadge(systemName: icon, tint: tint)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.body.weight(.medium))
+                    Spacer(minLength: 8)
+                    Text(value)
+                        .font(.body.weight(.semibold).monospacedDigit())
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                }
+
+                if let progress {
+                    CapacityBar(fraction: progress, tint: tint)
+                }
+
+                Text(detail)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(title)
-                Spacer()
-                Text(value)
-                    .font(.system(.body, design: .monospaced).weight(.semibold))
+                    .lineLimit(1)
             }
-
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
-
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .animation(.easeOut(duration: 0.3), value: value)
     }
 }
 
@@ -64,20 +46,30 @@ struct MiniMetric: View {
     var icon: String
     var title: String
     var value: String
+    var tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(title, systemImage: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(.caption, design: .monospaced).weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+        HStack(spacing: 8) {
+            IconBadge(systemName: icon, tint: tint, size: 22)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(value)
+                    .font(.callout.weight(.semibold).monospacedDigit())
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer(minLength: 0)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .card(.panel, cornerRadius: 10)
+        .animation(.easeOut(duration: 0.3), value: value)
     }
 }
 
@@ -105,7 +97,22 @@ struct AIProviderIcon: View {
     }
 }
 
-private enum AIProviderAppIcons {
+/// Badge del provider: icona dell'app se installata, altrimenti il simbolo di sistema.
+struct AIProviderBadge: View {
+    var provider: AIProviderID
+    var size: CGFloat = 26
+
+    var body: some View {
+        IconBadge(
+            systemName: provider.icon,
+            image: AIProviderAppIcons.icon(for: provider),
+            tint: MetricTint.provider(provider),
+            size: size
+        )
+    }
+}
+
+enum AIProviderAppIcons {
     static let claude = load(bundleID: "com.anthropic.claudefordesktop", fallback: "/Applications/Claude.app")
     static let codex = load(bundleID: "com.openai.codex", fallback: "/Applications/Codex.app")
 
@@ -182,54 +189,5 @@ private enum AIProviderAppIcons {
         }
 
         return NSImage(cgImage: cropped, size: .zero)
-    }
-}
-
-struct DetailSection<Content: View>: View {
-    var title: String
-    var content: Content
-
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 6) {
-                content
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-        }
-    }
-}
-
-struct InfoRow: View {
-    var title: String
-    var value: String
-
-    init(_ title: String, _ value: String) {
-        self.title = title
-        self.value = value
-    }
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 12)
-            Text(value)
-                .font(.system(.caption, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .font(.caption)
     }
 }

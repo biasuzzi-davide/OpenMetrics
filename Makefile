@@ -1,4 +1,4 @@
-.PHONY: app build run test clean package dmg dmg-from-app notarize
+.PHONY: app build run test clean package dmg dmg-from-app notarize icon
 
 APP_NAME = OpenMetrics
 APP_BUNDLE_ID = dev.davide.openmetrics
@@ -12,11 +12,15 @@ CODESIGN_ID ?= Apple Development
 CODESIGN_FLAGS ?= --options runtime
 DISTRIBUTION_CODESIGN_ID ?= Developer ID Application
 NOTARY_PROFILE ?= openmetrics-notary
+ICON_ICNS = Resources/AppIcon.icns
+ICONSET_DIR = $(DIST_DIR)/AppIcon.iconset
 
 app: build
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	cp ".build/release/$(APP_NAME)" "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
 	cp Info.plist "$(APP_DIR)/Contents/Info.plist"
+	mkdir -p "$(APP_DIR)/Contents/Resources"
+	cp "$(ICON_ICNS)" "$(APP_DIR)/Contents/Resources/AppIcon.icns"
 	chmod +x "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
 	codesign --force --sign "$(CODESIGN_ID)" --identifier "$(APP_BUNDLE_ID)" $(CODESIGN_FLAGS) "$(APP_DIR)"
 
@@ -55,6 +59,12 @@ notarize: package
 	rm -f "$(ZIP_PATH)"
 	ditto -c -k --keepParent "$(APP_DIR)" "$(ZIP_PATH)"
 	spctl -a -vv --type execute "$(APP_DIR)"
+
+# Rigenera l'icona dell'app dallo script SwiftUI (serve solo quando cambia il disegno).
+icon:
+	rm -rf "$(ICONSET_DIR)"
+	swift scripts/make-icon.swift "$(ICONSET_DIR)"
+	iconutil -c icns "$(ICONSET_DIR)" -o "$(ICON_ICNS)"
 
 clean:
 	rm -rf .build dist

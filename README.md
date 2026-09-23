@@ -5,7 +5,8 @@ OpenMetrics e una piccola app macOS da menu bar per tenere sotto controllo metri
 ## Funzionalita
 
 - Barra menu configurabile con CPU, RAM, disco, batteria, rete, Claude e Codex.
-- Pannello SwiftUI con tab Panoramica, Dettagli, AI e Impostazioni.
+- Pannello traslucido stile Centro di Controllo con tab Panoramica, AI e Dettagli; Liquid Glass su macOS 26, materiale classico prima.
+- Finestra Impostazioni nativa (⌘,) con schede Generale, Barra menu e AI.
 - Finestra "Utilizzo AI" con lo storico di token e costi nel tempo, filtrabile per periodo, provider, modello e progetto.
 - Metriche sistema: CPU, load average, core attivi, RAM, cache, memoria wired/compressa, swap, disco, batteria, rete, uptime, stato termico, temperature componenti, host e versione macOS.
 - Lettura traffico rete in ingresso/uscita, interfaccia attiva e indirizzo IP.
@@ -15,6 +16,7 @@ OpenMetrics e una piccola app macOS da menu bar per tenere sotto controllo metri
 - Grafico a barre impilate per tipo di token, modello, progetto o provider, con granularita giorno, settimana o mese.
 - Tabelle ordinabili per modello e per progetto, esportazione CSV dei periodi visualizzati.
 - Icona nel Dock opzionale: l'app resta nella barra menu e diventa una finestra quando serve.
+- Tinte semantiche per metrica (CPU, RAM, disco, batteria, provider AI) che passano ad arancio e rosso sopra soglia.
 - Aggiornamento manuale e intervallo automatico configurabile a 1, 2, 5 o 10 secondi.
 - Avvio automatico al login.
 - Nessuna dipendenza esterna: usa SwiftUI, IOKit, Security e API native macOS.
@@ -60,7 +62,11 @@ Sources/OpenMetrics/Models/      Snapshot dati, record e aggregazioni di utilizz
 Sources/OpenMetrics/Services/    Lettura metriche native macOS, log AI e listino prezzi
 Sources/OpenMetrics/Support/     Formatter, cache binaria, policy Dock, chiavi impostazioni
 Sources/OpenMetrics/Views/       UI menu bar, tab e componenti
+Sources/OpenMetrics/Views/Theme/ Tinte, card, badge e sfondo vetro del pannello
+Sources/OpenMetrics/Views/Settings/ Finestra Impostazioni
 Sources/OpenMetrics/Views/Usage/ Finestra utilizzo: filtri, grafici e tabelle
+Resources/                       Icona dell'app (AppIcon.icns)
+scripts/                         Generatore dell'icona
 Tests/OpenMetricsTests/          Test formatter, mapping AI, aggregazioni e cache
 ```
 
@@ -85,6 +91,13 @@ Per avviarla:
 
 ```sh
 make run
+```
+
+L'icona in `Resources/AppIcon.icns` e generata da `scripts/make-icon.swift`; per rigenerarla dopo
+una modifica al disegno:
+
+```sh
+make icon
 ```
 
 ## Distribuzione macOS

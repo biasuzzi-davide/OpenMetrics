@@ -125,9 +125,9 @@ enum AIUsageDisplayMode: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .used:
-            return "USED"
+            return "Usata"
         case .left:
-            return "LEFT"
+            return "Residua"
         }
     }
 }

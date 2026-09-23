@@ -18,22 +18,20 @@ struct UsageFiltersSidebar: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                period
-                view
-                providers
-                modelPicker
-                projectPicker
-                footnote
-            }
-            .padding(14)
+        List {
+            period
+            view
+            providers
+            modelPicker
+            projectPicker
+            footnote
         }
+        .listStyle(.sidebar)
     }
 
     private var period: some View {
-        UsageFilterGroup(title: "Periodo") {
-            Picker("", selection: $store.filter.preset) {
+        Section("Periodo") {
+            Picker("Periodo", selection: $store.filter.preset) {
                 ForEach(UsageRangePreset.allCases) { preset in
                     Text(preset.title).tag(preset)
                 }
@@ -47,7 +45,7 @@ struct UsageFiltersSidebar: View {
 
             if let first = store.catalog.firstRecord, let last = store.catalog.lastRecord {
                 Text("dati da \(first.formatted(date: .abbreviated, time: .omitted)) a \(last.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -55,7 +53,7 @@ struct UsageFiltersSidebar: View {
     }
 
     private var view: some View {
-        UsageFilterGroup(title: "Vista") {
+        Section("Vista") {
             Picker("Metrica", selection: $store.filter.metric) {
                 ForEach(UsageMetricKind.allCases) { metric in
                     Text(metric.title).tag(metric)
@@ -75,11 +73,11 @@ struct UsageFiltersSidebar: View {
     }
 
     private var providers: some View {
-        UsageFilterGroup(title: "Provider") {
+        Section("Provider") {
             ForEach(AIProviderID.allCases) { provider in
                 Toggle(isOn: providerBinding(provider)) {
                     HStack(spacing: 6) {
-                        AIProviderIcon(provider: provider, size: 12)
+                        AIProviderBadge(provider: provider, size: 16)
                         Text(provider.rawValue)
                     }
                 }
@@ -89,10 +87,7 @@ struct UsageFiltersSidebar: View {
     }
 
     private var modelPicker: some View {
-        UsageFilterGroup(
-            title: "Modelli",
-            subtitle: selectionLabel(store.filter.models.count, total: store.catalog.models.count)
-        ) {
+        Section {
             UsageSelectionControls(
                 selection: $store.filter.models,
                 universe: store.catalog.models,
@@ -109,14 +104,16 @@ struct UsageFiltersSidebar: View {
                 universe: store.catalog.models,
                 selection: $store.filter.models
             )
+        } header: {
+            UsageFilterHeader(
+                title: "Modelli",
+                subtitle: selectionLabel(store.filter.models.count, total: store.catalog.models.count)
+            )
         }
     }
 
     private var projectPicker: some View {
-        UsageFilterGroup(
-            title: "Progetti",
-            subtitle: selectionLabel(store.filter.projects.count, total: store.catalog.projects.count)
-        ) {
+        Section {
             UsageSelectionControls(
                 selection: $store.filter.projects,
                 universe: store.catalog.projects.map(\.path),
@@ -133,14 +130,18 @@ struct UsageFiltersSidebar: View {
                 universe: store.catalog.projects.map(\.path),
                 selection: $store.filter.projects
             )
+        } header: {
+            UsageFilterHeader(
+                title: "Progetti",
+                subtitle: selectionLabel(store.filter.projects.count, total: store.catalog.projects.count)
+            )
         }
     }
 
     private var footnote: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Divider()
+        Section {
             Text("Il costo e una stima a tariffe API. Con un abbonamento Claude o ChatGPT quei token non si pagano a consumo: serve a confrontare il peso dei periodi, non a leggere la spesa reale.")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -167,6 +168,23 @@ struct UsageFiltersSidebar: View {
     }
 }
 
+/// Intestazione di sezione con il conteggio della selezione a destra.
+struct UsageFilterHeader: View {
+    var title: String
+    var subtitle: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+            Spacer()
+            Text(subtitle)
+                .font(.caption)
+                .fontWeight(.regular)
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
 /// "Tutti" riporta il filtro a vuoto (che significa nessuna restrizione); "Solo questi"
 /// tiene esattamente le voci che la ricerca sta mostrando.
 struct UsageSelectionControls: View {
@@ -189,7 +207,7 @@ struct UsageSelectionControls: View {
         }
         .controlSize(.small)
         .buttonStyle(.link)
-        .font(.caption2)
+        .font(.caption)
     }
 }
 
@@ -216,7 +234,7 @@ struct UsageCheckboxList: View {
             VStack(alignment: .leading, spacing: 3) {
                 if items.isEmpty {
                     Text("nessun risultato")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -228,18 +246,18 @@ struct UsageCheckboxList: View {
                             .help(item.help ?? item.label)
                     }
                     .toggleStyle(.checkbox)
-                    .font(.caption)
+                    .font(.callout)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.trailing, 4)
+            .padding(8)
         }
         .frame(height: listHeight)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var listHeight: CGFloat {
-        items.count <= 4 ? 88 : 180
+        items.count <= 4 ? 96 : 190
     }
 
     private func binding(for id: String) -> Binding<Bool> {
@@ -249,30 +267,5 @@ struct UsageCheckboxList: View {
                 selection = UsageSelection.toggling(id, to: isOn, in: selection, universe: universe)
             }
         )
-    }
-}
-
-struct UsageFilterGroup<Content: View>: View {
-    var title: String
-    var subtitle: String?
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title.uppercased())
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

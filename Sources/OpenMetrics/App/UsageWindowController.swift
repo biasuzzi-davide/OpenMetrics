@@ -19,12 +19,18 @@ final class UsageWindowController: NSObject, NSWindowDelegate {
         }
 
         let controller = NSHostingController(rootView: UsageWindow(store: store))
+        if #available(macOS 14.0, *) {
+            // Titolo, sottotitolo e toolbar dichiarati in SwiftUI finiscono nella barra della finestra.
+            controller.sceneBridgingOptions = [.title, .toolbars]
+        }
+
         let window = NSWindow(contentViewController: controller)
         window.title = "Utilizzo AI"
         window.setContentSize(NSSize(width: 1_120, height: 740))
         window.contentMinSize = NSSize(width: 880, height: 560)
+        // Con il contenuto a tutta altezza la sidebar sale fin sotto la toolbar, come in Finder.
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.setFrameAutosaveName("OpenMetricsUsageWindow")

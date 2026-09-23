@@ -19,7 +19,7 @@ struct UsageBreakdownTable: View {
             TableColumn(labelColumn) { row in
                 HStack(spacing: 6) {
                     if showsProvider, let provider = row.provider {
-                        AIProviderIcon(provider: provider, size: 12)
+                        AIProviderBadge(provider: provider, size: 16)
                     }
                     Text(row.label)
                         .lineLimit(1)
@@ -38,68 +38,62 @@ struct UsageBreakdownTable: View {
                 UsageShareBar(
                     fraction: grandTotal.totalTokens > 0
                         ? Double(row.totals.totalTokens) / Double(grandTotal.totalTokens)
-                        : 0
+                        : 0,
+                    tint: row.provider.map(MetricTint.provider) ?? .accentColor
                 )
             }
             .width(min: 70, ideal: 90)
 
             TableColumn("Token", value: \.totals.totalTokens) { row in
-                monospaced(UsageFormatter.tokens(row.totals.totalTokens))
+                numeric(UsageFormatter.tokens(row.totals.totalTokens))
             }
             .width(min: 60, ideal: 70)
 
             TableColumn("Input", value: \.totals.inputTokens) { row in
-                monospaced(UsageFormatter.tokens(row.totals.inputTokens))
+                numeric(UsageFormatter.tokens(row.totals.inputTokens))
             }
             .width(min: 60, ideal: 70)
 
             TableColumn("Output", value: \.totals.outputTokens) { row in
-                monospaced(UsageFormatter.tokens(row.totals.outputTokens))
+                numeric(UsageFormatter.tokens(row.totals.outputTokens))
             }
             .width(min: 60, ideal: 70)
 
             TableColumn("Cache R", value: \.totals.cacheReadTokens) { row in
-                monospaced(UsageFormatter.tokens(row.totals.cacheReadTokens))
+                numeric(UsageFormatter.tokens(row.totals.cacheReadTokens))
             }
             .width(min: 60, ideal: 70)
 
             TableColumn("Richieste", value: \.totals.requests) { row in
-                monospaced(UsageFormatter.integer(row.totals.requests))
+                numeric(UsageFormatter.integer(row.totals.requests))
             }
             .width(min: 60, ideal: 80)
 
             TableColumn("Costo", value: \.totals.costUSD) { row in
-                monospaced(row.totals.hasUnpriced && row.totals.costUSD == 0 ? "n/d" : UsageFormatter.dollars(row.totals.costUSD))
+                numeric(row.totals.hasUnpriced && row.totals.costUSD == 0 ? "n/d" : UsageFormatter.dollars(row.totals.costUSD))
             }
             .width(min: 60, ideal: 80)
         }
-        .tableStyle(.inset)
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
     }
 
-    private func monospaced(_ text: String) -> some View {
+    private func numeric(_ text: String) -> some View {
         Text(text)
-            .font(.system(.caption, design: .monospaced))
+            .monospacedDigit()
             .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
 struct UsageShareBar: View {
     var fraction: Double
+    var tint: Color
 
     var body: some View {
         HStack(spacing: 6) {
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.quaternary)
-                    Capsule()
-                        .fill(Color.accentColor)
-                        .frame(width: max(2, geometry.size.width * min(max(fraction, 0), 1)))
-                }
-            }
-            .frame(height: 6)
+            CapacityBar(fraction: fraction, tint: tint, height: 6)
 
             Text(UsageFormatter.percent(fraction))
-                .font(.system(.caption2, design: .monospaced))
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 42, alignment: .trailing)
         }

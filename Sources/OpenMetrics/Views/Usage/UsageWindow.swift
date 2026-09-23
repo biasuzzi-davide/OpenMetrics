@@ -22,144 +22,53 @@ struct UsageWindow: View {
     @State private var section = UsageSection.trend
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerBar
-            Divider()
+        NavigationSplitView {
+            UsageFiltersSidebar(store: store)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
+        } detail: {
+            content
+                .frame(minWidth: 620, minHeight: 440)
+        }
+        .navigationTitle("Utilizzo AI")
+        .navigationSubtitle(subtitle)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Sezione", selection: $section) {
+                    ForEach(UsageSection.allCases) { item in
+                        Text(item.rawValue).tag(item)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
 
-            NavigationSplitView {
-                UsageFiltersSidebar(store: store)
-                    .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 340)
-            } detail: {
-                content
-                    .frame(minWidth: 620, minHeight: 440)
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    exportCSV()
+                } label: {
+                    Label("Esporta CSV", systemImage: "square.and.arrow.up")
+                }
+                .disabled(store.analysis.buckets.isEmpty)
+                .help("Esporta i periodi visualizzati in CSV")
+
+                Button {
+                    store.refresh()
+                } label: {
+                    Label("Aggiorna", systemImage: "arrow.clockwise")
+                }
+                .disabled(store.isBusy)
+                .help("Rilegge i log e aggiunge le sessioni nuove")
             }
         }
         .onAppear { store.loadIfNeeded() }
     }
 
-    /// Barra comandi disegnata nella vista: la finestra usa un titlebar trasparente,
-    /// cosi i controlli restano allineati al resto del contenuto.
-    private var headerBar: some View {
-        HStack(spacing: 10) {
-            UsageStatusLabel(state: store.state, recordCount: store.recordCount)
-
-            Spacer()
-
-            Button {
-                exportCSV()
-            } label: {
-                Label("Esporta CSV", systemImage: "square.and.arrow.up")
-            }
-            .disabled(store.analysis.buckets.isEmpty)
-            .help("Esporta i periodi visualizzati in CSV")
-
-            Button {
-                store.refresh()
-            } label: {
-                Label("Aggiorna", systemImage: "arrow.clockwise")
-            }
-            .disabled(store.isBusy)
-            .help("Rilegge i log e aggiunge le sessioni nuove")
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 10)
+    private var subtitle: String {
+        "\(UsageFormatter.integer(store.recordCount)) richieste · \(stateDetail)"
     }
 
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if store.isBusy && store.recordCount == 0 {
-                UsageLoadingView(state: store.state)
-            } else {
-                Picker("", selection: $section) {
-                    ForEach(UsageSection.allCases) { item in
-                        Label(item.rawValue, systemImage: item.icon).tag(item)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-
-                if store.filter.isFiltered {
-                    UsageActiveFiltersBar(store: store)
-                }
-
-                UsageSummaryCards(analysis: store.analysis, granularity: store.filter.granularity)
-
-                if !store.unpricedModels.isEmpty {
-                    UsagePricingBanner(store: store)
-                }
-
-                Divider()
-
-                sectionBody
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    @ViewBuilder
-    private var sectionBody: some View {
-        switch section {
-        case .trend:
-            VStack(alignment: .leading, spacing: 12) {
-                UsageChartView(analysis: store.analysis, filter: store.filter)
-
-                if store.analysis.byProvider.count > 1 {
-                    UsageBreakdownTable(
-                        rows: store.analysis.byProvider,
-                        grandTotal: store.analysis.totals,
-                        labelColumn: "Provider",
-                        showsProvider: true,
-                        pricing: store.pricing
-                    )
-                    .frame(minHeight: 90, maxHeight: 130)
-                }
-            }
-        case .models:
-            UsageBreakdownTable(
-                rows: store.analysis.byModel,
-                grandTotal: store.analysis.totals,
-                labelColumn: "Modello",
-                showsProvider: false,
-                pricing: store.pricing
-            )
-        case .projects:
-            UsageBreakdownTable(
-                rows: store.analysis.byProject,
-                grandTotal: store.analysis.totals,
-                labelColumn: "Progetto",
-                showsProvider: true,
-                pricing: store.pricing
-            )
-        }
-    }
-
-    private func exportCSV() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "openmetrics-usage.csv"
-        panel.allowedContentTypes = [.commaSeparatedText]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        try? store.exportCSV(to: url)
-    }
-}
-
-struct UsageStatusLabel: View {
-    var state: UsageHistoryStore.LoadState
-    var recordCount: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text("\(UsageFormatter.integer(recordCount)) richieste indicizzate")
-                .font(.caption)
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var detail: String {
-        switch state {
+    private var stateDetail: String {
+        switch store.state {
         case .idle:
             return "in attesa"
         case .loadingCache:
@@ -173,28 +82,117 @@ struct UsageStatusLabel: View {
             return message
         }
     }
+
+    @ViewBuilder
+    private var content: some View {
+        if store.isBusy && store.recordCount == 0 {
+            UsageLoadingView(state: store.state)
+        } else if section == .trend {
+            // L'andamento puo essere piu alto della finestra: scorre, mentre le tabelle
+            // scorrono da sole e vogliono un'altezza definita.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    summaryBlocks
+
+                    UsageChartView(analysis: store.analysis, filter: store.filter)
+                        .padding(14)
+                        .card()
+
+                    if store.analysis.byProvider.count > 1 {
+                        UsageBreakdownTable(
+                            rows: store.analysis.byProvider,
+                            grandTotal: store.analysis.totals,
+                            labelColumn: "Provider",
+                            showsProvider: true,
+                            pricing: store.pricing
+                        )
+                        .frame(height: 36 + CGFloat(store.analysis.byProvider.count) * 28)
+                        .tableCard()
+                    }
+                }
+                .padding(16)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                summaryBlocks
+
+                switch section {
+                case .models:
+                    UsageBreakdownTable(
+                        rows: store.analysis.byModel,
+                        grandTotal: store.analysis.totals,
+                        labelColumn: "Modello",
+                        showsProvider: false,
+                        pricing: store.pricing
+                    )
+                    .tableCard()
+                case .projects, .trend:
+                    UsageBreakdownTable(
+                        rows: store.analysis.byProject,
+                        grandTotal: store.analysis.totals,
+                        labelColumn: "Progetto",
+                        showsProvider: true,
+                        pricing: store.pricing
+                    )
+                    .tableCard()
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    @ViewBuilder
+    private var summaryBlocks: some View {
+        if store.filter.isFiltered {
+            UsageActiveFiltersBar(store: store)
+        }
+
+        UsageSummaryCards(analysis: store.analysis, granularity: store.filter.granularity)
+
+        if !store.unpricedModels.isEmpty {
+            UsagePricingBanner(store: store)
+        }
+    }
+
+    private func exportCSV() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "openmetrics-usage.csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? store.exportCSV(to: url)
+    }
+}
+
+private extension View {
+    /// Una `Table` porta il suo sfondo: basta ritagliarla e bordarla come le altre card.
+    func tableCard() -> some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        return clipShape(shape)
+            .overlay(shape.strokeBorder(.quaternary.opacity(0.7), lineWidth: 1))
+    }
 }
 
 struct UsageLoadingView: View {
     var state: UsageHistoryStore.LoadState
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             if case .scanning(let progress) = state, progress.totalFiles > 0 {
                 ProgressView(value: progress.fraction)
                     .frame(maxWidth: 260)
                 Text("Indicizzo \(progress.scannedFiles) di \(progress.totalFiles) file di log")
-                    .font(.caption)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
                 ProgressView()
                 Text("Cerco i log di Claude Code e Codex")
-                    .font(.caption)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Text("Solo la prima volta: dopo vengono lette soltanto le righe nuove.")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -230,14 +228,14 @@ struct UsageActiveFiltersBar: View {
                 .foregroundStyle(.tint)
 
             Text("Filtri attivi")
-                .font(.caption.weight(.semibold))
+                .font(.callout.weight(.semibold))
 
             ForEach(chips, id: \.self) { chip in
                 Text(chip)
-                    .font(.caption2)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(.tint.opacity(0.18), in: Capsule())
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.tint.opacity(0.16), in: Capsule())
             }
 
             Spacer()
@@ -245,9 +243,9 @@ struct UsageActiveFiltersBar: View {
             Button("Azzera") { store.resetFilters() }
                 .controlSize(.small)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.tint.opacity(0.09), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -256,15 +254,14 @@ struct UsagePricingBanner: View {
     @ObservedObject var store: UsageHistoryStore
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.orange)
+        HStack(alignment: .center, spacing: 10) {
+            IconBadge(systemName: "exclamationmark.triangle.fill", tint: .orange, size: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(store.unpricedModels.count) modelli senza tariffa")
-                    .font(.caption.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                 Text(store.unpricedModels.prefix(6).joined(separator: ", "))
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -276,8 +273,9 @@ struct UsagePricingBanner: View {
             }
             .controlSize(.small)
         }
-        .padding(10)
-        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func configurePricing() {

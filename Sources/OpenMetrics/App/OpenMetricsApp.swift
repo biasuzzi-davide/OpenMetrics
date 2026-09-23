@@ -10,8 +10,6 @@ struct OpenMetricsApp: App {
     var body: some Scene {
         MenuBarExtra {
             MetricsPanel(store: store, aiStore: aiStore, settings: settings)
-                .frame(width: 400, height: 560)
-                .padding(16)
                 .onAppear { DockPolicy.setPinned(settings.showDockIcon) }
                 .onChange(of: settings.showDockIcon) { value in
                     DockPolicy.setPinned(value)
@@ -20,5 +18,9 @@ struct OpenMetricsApp: App {
             MenuBarLabel(snapshot: store.snapshot, aiSnapshot: aiStore.snapshot, settings: settings)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(store: store, settings: settings)
+        }
     }
 }

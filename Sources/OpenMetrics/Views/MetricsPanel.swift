@@ -1,10 +1,10 @@
+import AppKit
 import SwiftUI
 
 enum PanelTab: String, CaseIterable, Identifiable {
     case overview = "Panoramica"
     case ai = "AI"
     case details = "Dettagli"
-    case settings = "Impostazioni"
 
     var id: String { rawValue }
 }
@@ -18,10 +18,10 @@ struct MetricsPanel: View {
     var body: some View {
         let snapshot = store.snapshot
 
-        VStack(alignment: .leading, spacing: 14) {
-            Header(snapshot: snapshot)
+        VStack(alignment: .leading, spacing: 12) {
+            PanelHeader(snapshot: snapshot, store: store, aiStore: aiStore)
 
-            Picker("", selection: $tab) {
+            Picker("Sezione", selection: $tab) {
                 ForEach(PanelTab.allCases) { tab in
                     Text(tab.rawValue).tag(tab)
                 }
@@ -33,18 +33,17 @@ struct MetricsPanel: View {
                 switch tab {
                 case .overview:
                     OverviewTab(snapshot: snapshot)
-                case .details:
-                    DetailsTab(snapshot: snapshot)
                 case .ai:
                     AITab(store: aiStore, settings: settings)
-                case .settings:
-                    SettingsTab(store: store, settings: settings)
+                case .details:
+                    DetailsTab(snapshot: snapshot)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            Footer(store: store, snapshot: snapshot)
         }
+        .padding(16)
+        .frame(width: 380, height: 500)
+        .background { PanelBackdrop() }
         .onAppear {
             store.setRefreshInterval(settings.refreshInterval)
         }
@@ -54,37 +53,101 @@ struct MetricsPanel: View {
     }
 }
 
-private struct Header: View {
+/// Intestazione minima: chi e la macchina, quando e stato letto l'ultimo campione, e il
+/// menu con le azioni che prima occupavano un footer intero.
+private struct PanelHeader: View {
     var snapshot: SystemSnapshot
+    var store: MetricsStore
+    var aiStore: AIUsageStore
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Label("OpenMetrics", systemImage: "gauge.with.dots.needle.bottom.50percent")
-                    .font(.headline)
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(snapshot.hostName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.headline)
                     .lineLimit(1)
+                HStack(spacing: 3) {
+                    Text("aggiornato")
+                    Text(snapshot.updatedAt, style: .time)
+                        .monospacedDigit()
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
 
+            PanelMenu(store: store, aiStore: aiStore)
+        }
+    }
+}
+
+private struct PanelMenu: View {
+    var store: MetricsStore
+    var aiStore: AIUsageStore
+
+    var body: some View {
+        Menu {
+            Button {
+                store.refresh()
+                aiStore.refresh()
+            } label: {
+                Label("Aggiorna", systemImage: "arrow.clockwise")
+            }
+            .keyboardShortcut("r")
+
             Button {
                 UsageWindowController.shared.show()
             } label: {
-                Image(systemName: "chart.bar.xaxis")
+                Label("Storico utilizzo AI…", systemImage: "chart.bar.xaxis")
             }
-            .buttonStyle(.bordered)
-            .help("Apri lo storico di utilizzo")
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(snapshot.updatedAt, style: .time)
-                    .font(.system(.body, design: .monospaced).weight(.semibold))
-                Text("aggiornato")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            Divider()
+
+            OpenSettingsButton()
+
+            Divider()
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Label("Esci da OpenMetrics", systemImage: "power")
             }
+            .keyboardShortcut("q")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
         }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Azioni")
+    }
+}
+
+/// Apre la finestra Impostazioni (⌘,).
+struct OpenSettingsButton: View {
+    var body: some View {
+        Button {
+            SettingsWindow.open()
+        } label: {
+            Label("Impostazioni…", systemImage: "gearshape")
+        }
+        .keyboardShortcut(",")
+    }
+}
+
+enum SettingsWindow {
+    /// Usa la stessa azione AppKit della voce "Impostazioni…" del menu app: l'azione
+    /// SwiftUI `openSettings` viene ignorata quando l'app e un accessorio senza
+    /// finestre attive, mentre il selettore passa sempre dalla catena dei responder.
+    @MainActor
+    static func open() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 }

@@ -5,47 +5,95 @@ struct DetailsTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                DetailSection(title: "Sistema") {
-                    InfoRow("macOS", snapshot.osVersion)
-                    InfoRow("Host", snapshot.hostName)
-                    InfoRow("Risparmio energia", snapshot.lowPowerModeEnabled ? "Attivo" : "Disattivo")
-                    InfoRow("Stato termico", MetricsFormatter.thermal(snapshot.thermalState))
-                }
+            VStack(alignment: .leading, spacing: 14) {
+                InfoSection(title: "Sistema", rows: [
+                    .init("macOS", snapshot.osVersion),
+                    .init("Host", snapshot.hostName),
+                    .init("Risparmio energia", snapshot.lowPowerModeEnabled ? "Attivo" : "Disattivo"),
+                    .init("Stato termico", MetricsFormatter.thermal(snapshot.thermalState))
+                ])
 
-                DetailSection(title: "CPU") {
-                    InfoRow("Utilizzo", MetricsFormatter.percent(snapshot.cpuUsage))
-                    InfoRow("Core", "\(snapshot.activeProcessorCount) attivi / \(snapshot.processorCount) totali")
-                    InfoRow("Load average", MetricsFormatter.loadAverage(snapshot.loadAverage))
-                }
+                InfoSection(title: "CPU", rows: [
+                    .init("Utilizzo", MetricsFormatter.percent(snapshot.cpuUsage)),
+                    .init("Core", "\(snapshot.activeProcessorCount) attivi / \(snapshot.processorCount) totali"),
+                    .init("Load average", MetricsFormatter.loadAverage(snapshot.loadAverage))
+                ])
 
-                DetailSection(title: "Memoria") {
-                    InfoRow("Usata", MetricsFormatter.bytes(snapshot.memoryUsed))
-                    InfoRow("Libera", MetricsFormatter.bytes(snapshot.memoryFree))
-                    InfoRow("Cache", MetricsFormatter.bytes(snapshot.memoryCached))
-                    InfoRow("Wired", MetricsFormatter.bytes(snapshot.memoryWired))
-                    InfoRow("Compressa", MetricsFormatter.bytes(snapshot.memoryCompressed))
-                    InfoRow("Swap", "\(MetricsFormatter.bytes(snapshot.swapUsed)) / \(MetricsFormatter.bytes(snapshot.swapTotal))")
-                }
+                InfoSection(title: "Memoria", rows: [
+                    .init("Usata", MetricsFormatter.bytes(snapshot.memoryUsed)),
+                    .init("Libera", MetricsFormatter.bytes(snapshot.memoryFree)),
+                    .init("Cache", MetricsFormatter.bytes(snapshot.memoryCached)),
+                    .init("Wired", MetricsFormatter.bytes(snapshot.memoryWired)),
+                    .init("Compressa", MetricsFormatter.bytes(snapshot.memoryCompressed)),
+                    .init("Swap", "\(MetricsFormatter.bytes(snapshot.swapUsed)) / \(MetricsFormatter.bytes(snapshot.swapTotal))")
+                ])
 
-                DetailSection(title: "Disco e rete") {
-                    InfoRow("Disco usato", MetricsFormatter.bytes(snapshot.diskUsed))
-                    InfoRow("Disco libero", MetricsFormatter.bytes(snapshot.diskAvailable))
-                    InfoRow("Interfaccia", snapshot.networkInterface ?? "n/d")
-                    InfoRow("IP", snapshot.ipAddress ?? "n/d")
-                }
+                InfoSection(title: "Disco e rete", rows: [
+                    .init("Disco usato", MetricsFormatter.bytes(snapshot.diskUsed)),
+                    .init("Disco libero", MetricsFormatter.bytes(snapshot.diskAvailable)),
+                    .init("Interfaccia", snapshot.networkInterface ?? "n/d"),
+                    .init("IP", snapshot.ipAddress ?? "n/d")
+                ])
 
                 if !snapshot.componentTemperatures.isEmpty {
-                    DetailSection(title: "Temperature") {
-                        ForEach(snapshot.componentTemperatures.keys.sorted(), id: \.self) { component in
-                            if let temp = snapshot.componentTemperatures[component] {
-                                InfoRow(component, MetricsFormatter.temperature(temp))
+                    InfoSection(
+                        title: "Temperature",
+                        rows: snapshot.componentTemperatures.keys.sorted().compactMap { component in
+                            snapshot.componentTemperatures[component].map {
+                                InfoSection.Row(component, MetricsFormatter.temperature($0))
                             }
                         }
-                    }
+                    )
                 }
             }
-            .padding(.trailing, 6)
+            .padding(.bottom, 2)
+        }
+    }
+}
+
+/// Gruppo di righe etichetta/valore con titolo, come le sezioni di Impostazioni di Sistema.
+struct InfoSection: View {
+    struct Row {
+        var title: String
+        var value: String
+
+        init(_ title: String, _ value: String) {
+            self.title = title
+            self.value = value
+        }
+    }
+
+    var title: String
+    var rows: [Row]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                ForEach(rows.indices, id: \.self) { index in
+                    if index > 0 {
+                        Divider().padding(.leading, 10)
+                    }
+
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(rows[index].title)
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 12)
+                        Text(rows[index].value)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                }
+            }
+            .card(.panel)
         }
     }
 }

@@ -10,6 +10,8 @@
     <string>OpenMetrics</string>
     <key>CFBundleDisplayName</key>
     <string>OpenMetrics</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>

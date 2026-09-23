@@ -57,3 +57,10 @@ import Testing
         showNetwork: true
     ) == "C42 R60 B81 N12K/1M")
 }
+
+@Test func menuBarTemplateReservesTwoDigitsPerNumber() {
+    #expect(MenuBarLabelSizing.template(for: "C9 R74") == "C88 R88")
+    #expect(MenuBarLabelSizing.template(for: "CPU 9%  BAT 100%") == "CPU 88%  BAT 888%")
+    #expect(MenuBarLabelSizing.template(for: "N12K/1M") == "N88K/88M")
+    #expect(MenuBarLabelSizing.template(for: "OpenMetrics") == "OpenMetrics")
+}

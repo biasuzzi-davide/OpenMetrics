@@ -6,7 +6,11 @@ struct MetricsFormatter {
     }
 
     static func bytes(_ value: UInt64) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+        // "0 KB" invece di "Zero KB": in una riga di numeri la parola stona.
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .memory
+        formatter.allowsNonnumericFormatting = false
+        return formatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))))
     }
 
     static func rate(_ value: UInt64) -> String {

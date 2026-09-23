@@ -34,8 +34,7 @@ struct MenuBarLabel: View {
             }
 
             if showsSystemText {
-                Text(aiItems.isEmpty ? systemText : compactSystemText)
-                    .monospacedDigit()
+                StableWidthText(aiItems.isEmpty ? systemText : compactSystemText)
                     .lineLimit(1)
             }
         }
@@ -111,18 +110,64 @@ private struct AIMenuBarProvider: View {
 
             if let weekly = item.weekly {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(item.session)
-                    Text(weekly)
+                    StableWidthText(item.session)
+                    StableWidthText(weekly)
                 }
                 .font(.system(size: 9, weight: .medium))
-                .monospacedDigit()
                 .lineLimit(1)
             } else {
-                Text(item.session)
-                    .monospacedDigit()
+                StableWidthText(item.session)
                     .lineLimit(1)
             }
         }
         .fixedSize()
+    }
+}
+
+/// Testo a cifre tabulari che occupa sempre la larghezza del suo valore piu largo.
+///
+/// Lo status item viene ridisegnato a ogni campione: se la larghezza cambia ("C9" contro
+/// "C12"), macOS chiude il pannello aperto. Un segnaposto invisibile con le cifre a
+/// tutta larghezza tiene la misura ferma finche non cambia il numero di cifre massimo.
+struct StableWidthText: View {
+    var text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Text(MenuBarLabelSizing.template(for: text))
+                .hidden()
+            Text(text)
+        }
+        .monospacedDigit()
+    }
+}
+
+enum MenuBarLabelSizing {
+    /// Sostituisce ogni gruppo di cifre con altrettanti "8" (almeno due), la cifra piu
+    /// larga nei font di sistema.
+    static func template(for text: String) -> String {
+        var result = ""
+        var run = 0
+
+        func flush() {
+            guard run > 0 else { return }
+            result += String(repeating: "8", count: max(run, 2))
+            run = 0
+        }
+
+        for character in text {
+            if character.isNumber {
+                run += 1
+            } else {
+                flush()
+                result.append(character)
+            }
+        }
+        flush()
+        return result
     }
 }
