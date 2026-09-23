@@ -97,18 +97,33 @@ struct AIProviderIcon: View {
     }
 }
 
-/// Badge del provider: icona dell'app se installata, altrimenti il simbolo di sistema.
+/// Marchio del provider: icona dell'app (o simbolo di sistema) nella sua tinta, su un disco leggero.
 struct AIProviderBadge: View {
     var provider: AIProviderID
     var size: CGFloat = 26
 
     var body: some View {
-        IconBadge(
-            systemName: provider.icon,
-            image: AIProviderAppIcons.icon(for: provider),
-            tint: MetricTint.provider(provider),
-            size: size
-        )
+        let tint = MetricTint.provider(provider)
+
+        ZStack {
+            Circle()
+                .fill(tint.opacity(0.16))
+
+            if let image = AIProviderAppIcons.icon(for: provider) {
+                Image(nsImage: image)
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .foregroundStyle(tint)
+                    .padding(size * 0.24)
+            } else {
+                Image(systemName: provider.icon)
+                    .font(.system(size: size * 0.45, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel(provider.rawValue)
     }
 }
 

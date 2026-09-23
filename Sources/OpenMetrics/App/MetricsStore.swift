@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class MetricsStore: ObservableObject {
     @Published private(set) var snapshot = SystemSnapshot.empty
+    @Published private(set) var history = MetricHistory()
 
     private let reader = SystemReader()
     private var refreshInterval = 1
@@ -27,6 +28,7 @@ final class MetricsStore: ObservableObject {
 
     func refresh() {
         snapshot = reader.read()
+        history.append(snapshot)
     }
 
     private func startUpdater() {

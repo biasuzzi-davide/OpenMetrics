@@ -13,49 +13,41 @@ import Testing
     #expect(MetricsFormatter.duration(180_000) == "2g 2h")
 }
 
-@Test func formatsMenuBarSelection() {
+@Test func buildsMenuBarItemsFromSelection() {
     var snapshot = SystemSnapshot.empty
     snapshot.cpuUsage = 0.42
     snapshot.memoryUsed = 6
     snapshot.memoryTotal = 10
     snapshot.batteryPercent = 0.81
-
-    #expect(MetricsFormatter.menuBarText(
-        snapshot: snapshot,
-        showCPU: true,
-        showRAM: true,
-        showDisk: false,
-        showBattery: true,
-        showNetwork: false
-    ) == "CPU 42%  RAM 60%  BAT 81%")
-
-    #expect(MetricsFormatter.menuBarText(
-        snapshot: snapshot,
-        showCPU: false,
-        showRAM: false,
-        showDisk: false,
-        showBattery: false,
-        showNetwork: false
-    ) == "OpenMetrics")
-}
-
-@Test func formatsCompactMenuBarSelection() {
-    var snapshot = SystemSnapshot.empty
-    snapshot.cpuUsage = 0.42
-    snapshot.memoryUsed = 6
-    snapshot.memoryTotal = 10
-    snapshot.batteryPercent = 0.81
+    snapshot.batteryIsCharging = true
     snapshot.networkInPerSecond = 12_345
     snapshot.networkOutPerSecond = 1_234_567
 
-    #expect(MetricsFormatter.compactMenuBarText(
+    let items = MetricsFormatter.menuBarItems(
         snapshot: snapshot,
         showCPU: true,
         showRAM: true,
         showDisk: false,
         showBattery: true,
         showNetwork: true
-    ) == "C42 R60 B81 N12K/1M")
+    )
+
+    #expect(items.map(\.symbol) == ["cpu", "memorychip", "battery.100.bolt", "arrow.down", "arrow.up"])
+    #expect(items.map(\.text) == ["42%", "60%", "81%", "12K", "1M"])
+    #expect(items.map(\.template) == ["888%", "888%", "888%", "888M", "888M"])
+}
+
+@Test func menuBarItemsAreEmptyWithoutSelection() {
+    let items = MetricsFormatter.menuBarItems(
+        snapshot: .empty,
+        showCPU: false,
+        showRAM: false,
+        showDisk: false,
+        showBattery: false,
+        showNetwork: false
+    )
+
+    #expect(items.isEmpty)
 }
 
 @Test func menuBarTemplateReservesTwoDigitsPerNumber() {
@@ -63,4 +55,13 @@ import Testing
     #expect(MenuBarLabelSizing.template(for: "CPU 9%  BAT 100%") == "CPU 88%  BAT 888%")
     #expect(MenuBarLabelSizing.template(for: "N12K/1M") == "N88K/88M")
     #expect(MenuBarLabelSizing.template(for: "OpenMetrics") == "OpenMetrics")
+}
+
+@Test func formatsRatesCompactly() {
+    #expect(MetricsFormatter.rate(0) == "0 B/s")
+    #expect(MetricsFormatter.rate(942) == "942 B/s")
+    #expect(MetricsFormatter.rate(12_345).hasSuffix(" KB/s"))
+    #expect(MetricsFormatter.rate(12_345).hasPrefix("12"))
+    #expect(MetricsFormatter.rate(1_150_000).hasSuffix(" MB/s"))
+    #expect(MetricsFormatter.rate(1_150_000).hasPrefix("1"))
 }

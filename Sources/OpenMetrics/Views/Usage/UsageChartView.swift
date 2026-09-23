@@ -6,6 +6,8 @@ struct UsageChartView: View {
     var filter: UsageFilter
 
     @State private var hovered: Date?
+    @State private var hoverX: CGFloat = 0
+    @State private var chartWidth: CGFloat = 0
 
     private var palette: [Color] {
         [.blue, .teal, .orange, .purple, .pink, .green, .indigo, .yellow, .red, .mint, .brown, .cyan]
@@ -60,6 +62,7 @@ struct UsageChartView: View {
                         y: .value(filter.metric.title, point.value)
                     )
                     .foregroundStyle(by: .value("Serie", point.series))
+                    .cornerRadius(2.5)
                     .opacity(hovered == nil || hovered == point.bucketStart ? 1 : 0.45)
                 }
             }
@@ -91,6 +94,8 @@ struct UsageChartView: View {
                             switch phase {
                             case .active(let location):
                                 hovered = bucket(at: location, proxy: proxy, geometry: geometry)
+                                hoverX = location.x
+                                chartWidth = geometry.size.width
                             case .ended:
                                 hovered = nil
                             }
@@ -98,7 +103,7 @@ struct UsageChartView: View {
                 }
             }
             .frame(minHeight: 220)
-            .overlay(alignment: .topTrailing) { tooltip }
+            .overlay(alignment: .topLeading) { tooltip }
         }
     }
 
@@ -147,12 +152,21 @@ struct UsageChartView: View {
                 .font(.caption2)
             }
             .padding(10)
-            .frame(maxWidth: 230)
+            .frame(width: Self.tooltipWidth)
             .glassSurface(in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
-            .padding(8)
+            .offset(x: tooltipX, y: 6)
             .allowsHitTesting(false)
         }
+    }
+
+    private static let tooltipWidth: CGFloat = 220
+
+    /// Segue il cursore restando dentro il grafico.
+    private var tooltipX: CGFloat {
+        let ideal = hoverX - Self.tooltipWidth / 2
+        let maxX = max(chartWidth - Self.tooltipWidth - 4, 4)
+        return min(max(ideal, 4), maxX)
     }
 
     /// Converte la posizione del cursore nel bucket sotto di esso.

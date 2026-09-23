@@ -29,20 +29,25 @@ struct MetricsPanel: View {
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            Group {
-                switch tab {
-                case .overview:
-                    OverviewTab(snapshot: snapshot)
-                case .ai:
-                    AITab(store: aiStore, settings: settings)
-                case .details:
-                    DetailsTab(snapshot: snapshot)
+            ZStack {
+                Group {
+                    switch tab {
+                    case .overview:
+                        OverviewTab(snapshot: snapshot, history: store.history)
+                    case .ai:
+                        AITab(store: aiStore, settings: settings)
+                    case .details:
+                        DetailsTab(snapshot: snapshot)
+                    }
                 }
+                .id(tab)
+                .transition(.opacity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .animation(.easeInOut(duration: 0.18), value: tab)
         }
         .padding(16)
-        .frame(width: 380, height: 500)
+        .frame(width: 380, height: 540)
         .background { PanelBackdrop() }
         .onAppear {
             store.setRefreshInterval(settings.refreshInterval)
@@ -67,7 +72,7 @@ private struct PanelHeader: View {
                     .font(.headline)
                     .lineLimit(1)
                 HStack(spacing: 3) {
-                    Text("aggiornato")
+                    Text("OpenMetrics · aggiornato")
                     Text(snapshot.updatedAt, style: .time)
                         .monospacedDigit()
                 }

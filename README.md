@@ -4,8 +4,10 @@ OpenMetrics e una piccola app macOS da menu bar per tenere sotto controllo metri
 
 ## Funzionalita
 
-- Barra menu configurabile con CPU, RAM, disco, batteria, rete, Claude e Codex.
+- Barra menu configurabile con CPU, RAM, disco, batteria, rete, Claude e Codex: ogni voce e un glifo con il valore, a larghezza fissa.
 - Pannello traslucido stile Centro di Controllo con tab Panoramica, AI e Dettagli; Liquid Glass su macOS 26, materiale classico prima.
+- Panoramica a moduli: anelli e numeri grandi per CPU, RAM, disco e batteria, sparkline degli ultimi 60 campioni per CPU, RAM e rete.
+- Tab AI con un anello per ogni quota (sessione, settimanale, modelli) e barre per crediti e spesa extra.
 - Finestra Impostazioni nativa (⌘,) con schede Generale, Barra menu e AI.
 - Finestra "Utilizzo AI" con lo storico di token e costi nel tempo, filtrabile per periodo, provider, modello e progetto.
 - Metriche sistema: CPU, load average, core attivi, RAM, cache, memoria wired/compressa, swap, disco, batteria, rete, uptime, stato termico, temperature componenti, host e versione macOS.

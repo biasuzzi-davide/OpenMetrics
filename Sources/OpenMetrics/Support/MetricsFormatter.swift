@@ -13,8 +13,18 @@ struct MetricsFormatter {
         return formatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))))
     }
 
+    /// "942 B/s", "12 KB/s", "1,1 MB/s": corto e a cifre stabili, pensato per i moduli.
     static func rate(_ value: UInt64) -> String {
-        "\(bytes(value))/s"
+        let units = ["B", "KB", "MB", "GB"]
+        var scaled = Double(value)
+        var unit = 0
+        while scaled >= 1_000, unit < units.count - 1 {
+            scaled /= 1_000
+            unit += 1
+        }
+        let digits = unit > 0 && scaled < 10 ? 1 : 0
+        let number = scaled.formatted(.number.precision(.fractionLength(digits)))
+        return "\(number) \(units[unit])/s"
     }
 
     static func duration(_ seconds: TimeInterval) -> String {
@@ -59,62 +69,36 @@ struct MetricsFormatter {
         String(format: "%.1f°C", celsius)
     }
 
-    static func menuBarText(
+    /// Voci della barra menu: un simbolo e un valore corto, niente sigle da decifrare.
+    static func menuBarItems(
         snapshot: SystemSnapshot,
         showCPU: Bool,
         showRAM: Bool,
         showDisk: Bool,
         showBattery: Bool,
         showNetwork: Bool
-    ) -> String {
-        var parts: [String] = []
+    ) -> [MenuBarItem] {
+        var items: [MenuBarItem] = []
 
         if showCPU {
-            parts.append("CPU \(percent(snapshot.cpuUsage))")
+            items.append(MenuBarItem(symbol: "cpu", text: percent(snapshot.cpuUsage), template: MenuBarLabelSizing.percentTemplate))
         }
         if showRAM {
-            parts.append("RAM \(percent(snapshot.memoryUsage))")
+            items.append(MenuBarItem(symbol: "memorychip", text: percent(snapshot.memoryUsage), template: MenuBarLabelSizing.percentTemplate))
         }
         if showDisk {
-            parts.append("SSD \(percent(snapshot.diskUsage))")
+            items.append(MenuBarItem(symbol: "internaldrive", text: percent(snapshot.diskUsage), template: MenuBarLabelSizing.percentTemplate))
         }
         if showBattery, let batteryPercent = snapshot.batteryPercent {
-            parts.append("BAT \(percent(batteryPercent))")
+            let symbol = snapshot.batteryIsCharging == true ? "battery.100.bolt" : "battery.100"
+            items.append(MenuBarItem(symbol: symbol, text: percent(batteryPercent), template: MenuBarLabelSizing.percentTemplate))
         }
         if showNetwork {
-            parts.append("↓ \(bytes(snapshot.networkInPerSecond)) ↑ \(bytes(snapshot.networkOutPerSecond))")
+            items.append(MenuBarItem(symbol: "arrow.down", text: compactBytes(snapshot.networkInPerSecond), template: MenuBarLabelSizing.bytesTemplate))
+            items.append(MenuBarItem(symbol: "arrow.up", text: compactBytes(snapshot.networkOutPerSecond), template: MenuBarLabelSizing.bytesTemplate))
         }
 
-        return parts.isEmpty ? "OpenMetrics" : parts.joined(separator: "  ")
-    }
-
-    static func compactMenuBarText(
-        snapshot: SystemSnapshot,
-        showCPU: Bool,
-        showRAM: Bool,
-        showDisk: Bool,
-        showBattery: Bool,
-        showNetwork: Bool
-    ) -> String {
-        var parts: [String] = []
-
-        if showCPU {
-            parts.append("C\(percentNumber(snapshot.cpuUsage))")
-        }
-        if showRAM {
-            parts.append("R\(percentNumber(snapshot.memoryUsage))")
-        }
-        if showDisk {
-            parts.append("D\(percentNumber(snapshot.diskUsage))")
-        }
-        if showBattery, let batteryPercent = snapshot.batteryPercent {
-            parts.append("B\(percentNumber(batteryPercent))")
-        }
-        if showNetwork {
-            parts.append("N\(compactBytes(snapshot.networkInPerSecond))/\(compactBytes(snapshot.networkOutPerSecond))")
-        }
-
-        return parts.isEmpty ? "OpenMetrics" : parts.joined(separator: " ")
+        return items
     }
 
     static func aiMenuBarText(
@@ -141,7 +125,8 @@ struct MetricsFormatter {
         return parts.joined(separator: "  ")
     }
 
-    private static func percentNumber(_ value: Double) -> String {
+    /// Solo le cifre della percentuale, per i numeri grandi con l'unita separata.
+    static func percentDigits(_ value: Double) -> String {
         String(Int((min(max(value, 0), 1) * 100).rounded()))
     }
 
@@ -151,4 +136,11 @@ struct MetricsFormatter {
         if value >= 1_000 { return "\(value / 1_000)K" }
         return "\(value)B"
     }
+}
+
+struct MenuBarItem: Equatable, Sendable {
+    var symbol: String
+    var text: String
+    /// Testo invisibile che fissa la larghezza della voce.
+    var template: String
 }

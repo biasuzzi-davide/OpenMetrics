@@ -73,31 +73,33 @@ struct UsageStatCard: View {
     var isWarning = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            IconBadge(systemName: icon, tint: tint, size: 28)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.caption)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title.uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(0.5)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-
-                Text(value)
-                    .font(.title2.weight(.semibold).monospacedDigit())
-                    .contentTransition(.numericText())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(isWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(tint)
             }
 
-            Spacer(minLength: 0)
+            Text(value)
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(isWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
         .animation(.easeOut(duration: 0.3), value: value)

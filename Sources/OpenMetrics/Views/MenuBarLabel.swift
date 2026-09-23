@@ -28,14 +28,23 @@ struct MenuBarLabel: View {
     }
 
     private var labelContent: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 9) {
             ForEach(aiItems) { item in
                 AIMenuBarProvider(item: item)
             }
 
-            if showsSystemText {
-                StableWidthText(aiItems.isEmpty ? systemText : compactSystemText)
-                    .lineLimit(1)
+            ForEach(systemItems, id: \.symbol) { item in
+                HStack(spacing: 3) {
+                    Image(systemName: item.symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                    StableWidthText(item.text, template: item.template)
+                        .font(.system(size: 12, weight: .medium))
+                }
+            }
+
+            if aiItems.isEmpty && systemItems.isEmpty {
+                Image(systemName: "gauge.with.dots.needle.bottom.50percent")
+                    .font(.system(size: 13, weight: .medium))
             }
         }
         .frame(height: 22)
@@ -44,8 +53,8 @@ struct MenuBarLabel: View {
         .environment(\.colorScheme, .light)
     }
 
-    private var systemText: String {
-        MetricsFormatter.menuBarText(
+    private var systemItems: [MenuBarItem] {
+        MetricsFormatter.menuBarItems(
             snapshot: snapshot,
             showCPU: settings.showCPUInMenuBar,
             showRAM: settings.showRAMInMenuBar,
@@ -53,21 +62,6 @@ struct MenuBarLabel: View {
             showBattery: settings.showBatteryInMenuBar,
             showNetwork: settings.showNetworkInMenuBar
         )
-    }
-
-    private var compactSystemText: String {
-        MetricsFormatter.compactMenuBarText(
-            snapshot: snapshot,
-            showCPU: settings.showCPUInMenuBar,
-            showRAM: settings.showRAMInMenuBar,
-            showDisk: settings.showDiskInMenuBar,
-            showBattery: settings.showBatteryInMenuBar,
-            showNetwork: settings.showNetworkInMenuBar
-        )
-    }
-
-    private var showsSystemText: Bool {
-        systemText != "OpenMetrics" || aiItems.isEmpty
     }
 
     private var aiItems: [AIMenuBarItem] {
@@ -108,37 +102,55 @@ private struct AIMenuBarProvider: View {
         HStack(spacing: 4) {
             AIProviderIcon(provider: item.provider, size: 16)
 
-            if let weekly = item.weekly {
+            // Entrambi i layout (una riga grande, due righe piccole) stanno nascosti sotto
+            // il valore visibile: la larghezza non cambia quando arrivano i dati.
+            ZStack(alignment: .leading) {
                 VStack(alignment: .leading, spacing: 0) {
-                    StableWidthText(item.session)
-                    StableWidthText(weekly)
+                    Text(MenuBarLabelSizing.percentTemplate)
+                    Text(MenuBarLabelSizing.percentTemplate)
                 }
                 .font(.system(size: 9, weight: .medium))
-                .lineLimit(1)
-            } else {
-                StableWidthText(item.session)
-                    .lineLimit(1)
+                .hidden()
+
+                Text(MenuBarLabelSizing.percentTemplate)
+                    .font(.system(size: 12, weight: .medium))
+                    .hidden()
+
+                if let weekly = item.weekly {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(item.session)
+                        Text(weekly)
+                    }
+                    .font(.system(size: 9, weight: .medium))
+                } else {
+                    Text(item.session)
+                        .font(.system(size: 12, weight: .medium))
+                }
             }
+            .monospacedDigit()
+            .lineLimit(1)
         }
         .fixedSize()
     }
 }
 
-/// Testo a cifre tabulari che occupa sempre la larghezza del suo valore piu largo.
+/// Testo a cifre tabulari che occupa sempre la larghezza del suo segnaposto.
 ///
-/// Lo status item viene ridisegnato a ogni campione: se la larghezza cambia ("C9" contro
-/// "C12"), macOS chiude il pannello aperto. Un segnaposto invisibile con le cifre a
-/// tutta larghezza tiene la misura ferma finche non cambia il numero di cifre massimo.
+/// Lo status item viene ridisegnato a ogni campione: se la larghezza cambia ("9%" contro
+/// "12%", o "--" contro "100%"), macOS chiude il pannello aperto. Un segnaposto invisibile
+/// con le cifre a tutta larghezza tiene la misura ferma.
 struct StableWidthText: View {
     var text: String
+    var template: String
 
-    init(_ text: String) {
+    init(_ text: String, template: String? = nil) {
         self.text = text
+        self.template = template ?? MenuBarLabelSizing.template(for: text)
     }
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Text(MenuBarLabelSizing.template(for: text))
+            Text(template)
                 .hidden()
             Text(text)
         }
@@ -147,6 +159,11 @@ struct StableWidthText: View {
 }
 
 enum MenuBarLabelSizing {
+    /// Larghezza di una percentuale a tre cifre: copre anche il 100%.
+    static let percentTemplate = "888%"
+    /// Larghezza di un tasso compatto ("12K", "1,1M"): la M e la lettera piu larga.
+    static let bytesTemplate = "888M"
+
     /// Sostituisce ogni gruppo di cifre con altrettanti "8" (almeno due), la cifra piu
     /// larga nei font di sistema.
     static func template(for text: String) -> String {

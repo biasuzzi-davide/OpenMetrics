@@ -68,15 +68,16 @@ struct InfoSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(0.6)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)
 
             VStack(spacing: 0) {
                 ForEach(rows.indices, id: \.self) { index in
                     if index > 0 {
-                        Divider().padding(.leading, 10)
+                        Divider().padding(.leading, 12)
                     }
 
                     HStack(alignment: .firstTextBaseline) {
@@ -89,11 +90,11 @@ struct InfoSection: View {
                             .minimumScaleFactor(0.75)
                     }
                     .font(.callout)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
                 }
             }
-            .card(.panel)
+            .tile(cornerRadius: 14)
         }
     }
 }
